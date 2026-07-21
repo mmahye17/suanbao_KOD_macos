@@ -155,6 +155,9 @@ node_modules
 
 # OSX
 .DS_Store
+._*
+.AppleDouble
+.LSOverride
 
 release/app/dist
 release/build

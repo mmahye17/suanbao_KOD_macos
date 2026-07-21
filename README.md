@@ -6,35 +6,19 @@
 <h1 align="center">
 <img src='./doc/statics/icon.png' width='30'>
 <span>
-    Chatbox
-    <span style="font-size:8px; font-weight: normal;">(Community Edition)</span>
+    Kod
 </span>
 </h1>
 <p align="center">
-    <em>Your Ultimate AI Copilot on the Desktop. <br />Chatbox is a desktop client for ChatGPT, Claude and other LLMs, available on Windows, Mac, Linux</em>
+    <em>Your Ultimate AI Copilot on the Desktop. <br />Kod is a desktop client for ChatGPT, Claude and other LLMs, available on Windows, Mac, Linux</em>
 </p>
 
 <p align="center">
-<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="macOS" src="https://img.shields.io/badge/-macOS-black?style=flat-square&logo=apple&logoColor=white" />
-</a>
-<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="Windows" src="https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white" />
-</a>
-<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="Linux" src="https://img.shields.io/badge/-Linux-yellow?style=flat-square&logo=linux&logoColor=white" />
-</a>
-<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
-<img alt="Downloads" src="https://img.shields.io/github/downloads/chatboxai/chatbox/total.svg?style=flat" />
-</a>
-<a href="#features">
+<img alt="License" src="https://img.shields.io/badge/License-GPLv3-blue?style=flat-square" />
 <img alt="Privacy" src="https://img.shields.io/badge/-Local%20First-green?style=flat-square&logo=shield&logoColor=white" />
-</a>
-</p>
-
-<p align="center">
-<a href="https://www.producthunt.com/posts/chatbox?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-chatbox" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=429547&theme=light" alt="Chatbox - Better&#0032;UI&#0032;&#0038;&#0032;Desktop&#0032;App&#0032;for&#0032;ChatGPT&#0044;&#0032;Claude&#0032;and&#0032;other&#0032;LLMs&#0046; | Product Hunt" style="width: 150px; height: 30px;" width="100" height="40" /></a>
-<a href="https://trendshift.io/repositories/14871" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14871" alt="chatboxai%2Fchatbox | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -46,115 +30,15 @@
   </a>
 </p>
 
-<div align="center" markdown="1">
-  <strong>Sponsored by Warp</strong>
-  <br>
-  <br>
-  <a href="https://go.warp.dev/chatbox">
-    <img alt="Warp sponsorship" width="400" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/refs/heads/main/Github/Sponsor/Warp-Github-LG-02.png">
-  </a>
-
-### [Warp, built for coding with multiple AI agents.](https://go.warp.dev/chatbox)
-[Available for MacOS, Linux, & Windows](https://go.warp.dev/chatbox)<br>
-</div>
-
 ---
 
-This is the repository for the Chatbox Community Edition, open-sourced under the GPLv3 license.
+**Kod** is an open-source desktop AI client, released under the GPLv3 license.
 
-[Chatbox is going open-source Again!](https://github.com/chatboxai/chatbox/issues/2266)
+Kod is based on [Chatbox Community Edition](https://github.com/chatboxai/chatbox) (GPLv3). We are grateful to the upstream project and continue to build on its foundation while keeping Kod fully open source.
 
-We regularly sync code from the pro repo to this repo, and vice versa.
+## Build from Source
 
-## Download
-
-### Desktop
-
-<table style="width: 100%">
-  <tr>
-    <td width="25%" align="center">
-      <b>Windows</b>
-    </td>
-    <td width="25%" align="center" colspan="2">
-      <b>MacOS</b>
-    </td>
-    <td width="25%" align="center">
-      <b>Linux</b>
-    </td>
-  </tr>
-  <tr style="text-align: center">
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-windows'>
-        <img src='./doc/statics/windows.png' style="height:24px; width: 24px" />
-        <br />
-        <b>Setup.exe</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-mac-intel'>
-        <img src='./doc/statics/mac.png' style="height:24px; width: 24px" />
-        <br />
-        <b>Intel</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-mac-aarch'>
-        <img src='./doc/statics/mac.png' style="height:24px; width: 24px" />
-        <br />
-        <b style="white-space: nowrap;">Apple Silicon</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-linux'>
-        <img src='./doc/statics/linux.png' style="height:24px; width: 24px" />
-        <br />
-        <b>AppImage</b>
-      </a>
-    </td>
-  </tr>
-</table>
-
-### iOS/Android
-
-<a href='https://apps.apple.com/app/chatbox-ai/id6471368056' style='margin-right: 4px'>
-<img src='./doc/statics/app_store.webp' style="height:38px;" />
-</a>
-<a href='https://play.google.com/store/apps/details?id=xyz.chatboxapp.chatbox' style='margin-right: 4px'>
-<img src='./doc/statics/google_play.png' style="height:38px;" />
-</a>
-<a href='https://chatboxai.app/install?download=android_apk' style='margin-right: 4px; display: inline-flex; justify-content: center'>
-<img src='./doc/statics/android.png' style="height:28px; display: inline-block" />
-.APK
-</a>
-
-For more information: [chatboxai.app](https://chatboxai.app/)
-
-## Quick Start
-
-### For End Users
-1. Download the appropriate installer for your platform from the [releases page](https://github.com/chatboxai/chatbox/releases)
-2. Install and launch Chatbox
-3. Configure your AI provider (OpenAI, Claude, etc.) in settings
-4. Start chatting!
-
-### System Requirements
-
-| Platform | Minimum Version | Architecture |
-|----------|----------------|--------------|
-| Windows | Windows 10 | x64 |
-| macOS | macOS 11 (Big Sur) | Intel/Apple Silicon |
-| Linux | Ubuntu 20.04+ / AppImage supported distros | x64 |
-
-<!-- <table>
-<tr>
-<td>
-<img src="./dec/../doc/demo_mobile_1.png" alt="App Screenshot" style="box-shadow: 2px 2px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; border-radius: 8px; height: 300px" />
-</td>
-<td>
-<img src="./dec/../doc/demo_mobile_2.png" alt="App Screenshot" style="box-shadow: 2px 2px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; border-radius: 8px; height: 300px" />
-</td>
-</tr>
-</table> -->
+Kod does not ship prebuilt installers yet. To try it out, build it from source by following the [Development](#development) guide below and running `pnpm run package` for your platform.
 
 ## Features
 
@@ -203,13 +87,10 @@ For more information: [chatboxai.app](https://chatboxai.app/)
 
 ### 🌐 Platform Availability
 -   **Cross-Platform Desktop**  
-    :computer: Chatbox is ready for Windows, Mac, and Linux users.
+    :computer: Kod is ready for Windows, Mac, and Linux users.
 
 -   **Web Version**  
     :globe_with_meridians: Use the web application on any device with a browser, anywhere.
-
--   **Mobile Apps**  
-    :phone: Native iOS and Android applications for on-the-go access.
 
 ### 🌍 Localization
 -   **Multilingual Support**  
@@ -234,36 +115,30 @@ For more information: [chatboxai.app](https://chatboxai.app/)
 
 ## How to Contribute
 
-We welcome contributions from the community! Here's how you can help make Chatbox better:
+We welcome contributions from the community! Here's how you can help make Kod better:
 
 ### 🐛 Reporting Issues
-- Use [GitHub Issues](https://github.com/chatboxai/chatbox/issues) to report bugs or request features
+- Use the [issue tracker](https://gitlab.kaiweb.org/kod-projects/kod/-/issues) to report bugs or request features
 - Before creating a new issue, please search existing issues to avoid duplicates
 - Provide detailed information including steps to reproduce, expected behavior, and screenshots if applicable
 
-### 🔧 Pull Requests
+### 🔧 Merge Requests
 1. Fork the repository and create your branch from `main`
 2. Make your changes and ensure the code follows our coding standards
 3. Test your changes thoroughly
 4. Update documentation if needed
-5. Submit a pull request with a clear description of the changes
+5. Submit a merge request with a clear description of the changes
 
 ### 🌍 Translations
-Help make Chatbox accessible to more people by contributing translations:
+Help make Kod accessible to more people by contributing translations:
 - Translation files are located in the `src/locales` directory
 - Follow the existing translation format
-- Submit a PR with your translation improvements
+- Submit a merge request with your translation improvements
 
 ### 📖 Documentation
 - Improve README, API documentation, or user guides
 - Fix typos or clarify unclear instructions
 - Add examples and tutorials
-
-### 🌟 Other Ways to Contribute
-- Star the repository to show your support
-- Share Chatbox with others
-- Answer questions in [GitHub Discussions](https://github.com/chatboxai/chatbox/discussions)
-- Provide feedback and suggestions
 
 **Thank you for contributing! 🙏**
 
@@ -273,7 +148,7 @@ Help make Chatbox accessible to more people by contributing translations:
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** (v20.x – v22.x) - [Download here](https://nodejs.org/)
+- **Node.js** (v22.x or later) - [Download here](https://nodejs.org/)
 - **pnpm** (v10.x or later) - Install via `corepack enable && corepack prepare pnpm@latest --activate`
 - **Git** - [Download here](https://git-scm.com/)
 
@@ -281,8 +156,8 @@ Before you begin, ensure you have the following installed:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/chatboxai/chatbox.git
-   cd chatbox
+   git clone https://gitlab.kaiweb.org/kod-projects/kod.git
+   cd kod
    ```
 
 2. **Install dependencies**
@@ -310,7 +185,7 @@ Before you begin, ensure you have the following installed:
 ### Project Structure
 
 ```
-chatbox/
+kod/
 ├── src/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # React renderer (UI)
@@ -340,14 +215,6 @@ chatbox/
 **Issue**: Changes not reflecting in development
 - **Solution**: Stop the dev server, delete `node_modules/.vite`, and restart
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=chatboxai/chatbox&type=Date)](https://star-history.com/#chatboxai/chatbox&Date)
-
-## Contact
-
-[Email](mailto:hi@chatboxai.com)
-
 ## License
 
-[LICENSE](./LICENSE)
+Kod is open-sourced under the [GPLv3](./LICENSE) license, in accordance with its upstream project Chatbox Community Edition.
