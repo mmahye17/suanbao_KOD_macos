@@ -8,6 +8,7 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ModelList } from '@/components/ModelList'
 
 interface ModelManagementProps {
+  showControls?: boolean
   chatboxAIModels: ProviderModelInfo[]
   allChatboxAIModels: ProviderModelInfo[]
   onDeleteModel: (modelId: string) => void
@@ -25,6 +26,7 @@ export function ModelManagement({
   onFetchModels,
   onAddModel,
   onRemoveModel,
+  showControls = true,
 }: ModelManagementProps) {
   const { t } = useTranslation()
   const [showFetchedModels, setShowFetchedModels] = useState(false)
@@ -41,53 +43,62 @@ export function ModelManagement({
           <Text span fw="600">
             {t('Model')}
           </Text>
-          <Flex gap="sm" align="center" justify="flex-end">
-            <Button
-              variant="light"
-              color="chatbox-gray"
-              c="chatbox-secondary"
-              size="compact-xs"
-              px="sm"
-              onClick={onResetModels}
-              leftSection={<ScalableIcon icon={IconRestore} size={12} />}
-            >
-              {t('Reset')}
-            </Button>
+          {showControls && (
+            <Flex gap="sm" align="center" justify="flex-end">
+              <Button
+                variant="light"
+                color="chatbox-gray"
+                c="chatbox-secondary"
+                size="compact-xs"
+                px="sm"
+                onClick={onResetModels}
+                leftSection={<ScalableIcon icon={IconRestore} size={12} />}
+              >
+                {t('Reset')}
+              </Button>
 
-            <Button
-              variant="light"
-              color="chatbox-gray"
-              c="chatbox-secondary"
-              size="compact-xs"
-              px="sm"
-              onClick={handleFetchModels}
-              leftSection={<ScalableIcon icon={IconRefresh} size={12} />}
-            >
-              {t('Fetch')}
-            </Button>
-          </Flex>
+              <Button
+                variant="light"
+                color="chatbox-gray"
+                c="chatbox-secondary"
+                size="compact-xs"
+                px="sm"
+                onClick={handleFetchModels}
+                leftSection={<ScalableIcon icon={IconRefresh} size={12} />}
+              >
+                {t('Fetch')}
+              </Button>
+            </Flex>
+          )}
         </Flex>
 
-        <ModelList models={chatboxAIModels} showActions={true} onDeleteModel={onDeleteModel} showSearch={false} />
+        <ModelList
+          models={chatboxAIModels}
+          showActions={showControls}
+          onDeleteModel={onDeleteModel}
+          showSearch={false}
+        />
       </Stack>
 
-      <AdaptiveModal
-        keepMounted={false}
-        opened={showFetchedModels}
-        onClose={() => setShowFetchedModels(false)}
-        title={t('Models')}
-        centered={true}
-        size="lg"
-      >
-        <ModelList
-          models={allChatboxAIModels}
-          showActions={true}
-          onAddModel={onAddModel}
-          onRemoveModel={onRemoveModel}
-          displayedModelIds={chatboxAIModels.map((m) => m.modelId)}
-          showSearch={true}
-        />
-      </AdaptiveModal>
+      {showControls && (
+        <AdaptiveModal
+          keepMounted={false}
+          opened={showFetchedModels}
+          onClose={() => setShowFetchedModels(false)}
+          title={t('Models')}
+          centered={true}
+          size="lg"
+        >
+          <ModelList
+            models={allChatboxAIModels}
+            showActions={true}
+            onAddModel={onAddModel}
+            onRemoveModel={onRemoveModel}
+            displayedModelIds={chatboxAIModels.map((m) => m.modelId)}
+            showSearch={true}
+          />
+        </AdaptiveModal>
+      )}
     </>
   )
 }

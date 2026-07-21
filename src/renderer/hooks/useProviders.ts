@@ -23,11 +23,14 @@ export const useProviders = () => {
       allProviderBaseInfos
         .map((p) => {
           const providerSettings = mergeSharedOAuthProviderSettings(p.id, providerSettingsMap)
-          if (p.id === ModelProviderEnum.ChatboxAI && settings.licenseKey) {
+          if (
+            p.id === ModelProviderEnum.ChatboxAI &&
+            (settings.licenseKey || providerSettings?.apiKey || chatboxAIModels.length > 0)
+          ) {
             return {
               ...p,
               ...providerSettings,
-              models: chatboxAIModels,
+              models: chatboxAIModels.length > 0 ? chatboxAIModels : providerSettings?.models || [],
             }
           } else if (
             (!p.isCustom &&

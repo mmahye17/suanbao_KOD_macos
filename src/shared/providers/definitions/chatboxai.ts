@@ -4,16 +4,18 @@ import ChatboxAI from './models/chatboxai'
 
 export const chatboxAIProvider = defineProvider({
   id: ModelProviderEnum.ChatboxAI,
-  name: 'Chatbox AI',
+  name: 'Kod AI',
   type: ModelProviderType.ChatboxAI,
   urls: {
-    website: 'https://chatboxai.app',
-    docs: 'https://chatboxai.app/help-center',
+    website: 'https://kod.kai.com',
+    docs: 'https://kod.kai.com/kod-ai-services-faqs',
   },
   createModel: (config) => {
     return new ChatboxAI(
       {
         licenseKey: config.globalSettings.licenseKey,
+        apiHost: config.formattedApiHost,
+        apiKey: config.effectiveApiKey,
         model: config.model,
         licenseInstances: config.globalSettings.licenseInstances,
         licenseDetail: config.globalSettings.licenseDetail,
@@ -30,8 +32,8 @@ export const chatboxAIProvider = defineProvider({
   },
   getDisplayName: (modelId, providerSettings, sessionType) => {
     if (sessionType === 'picture') {
-      return 'Chatbox AI'
+      return 'Kod AI'
     }
-    return `Chatbox AI (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`
+    return `Kod AI (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`
   },
 })

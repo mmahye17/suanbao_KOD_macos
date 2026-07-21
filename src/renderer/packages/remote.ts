@@ -18,6 +18,7 @@ import {
   type Config,
   type CopilotDetail,
   type ModelProvider,
+  type ProviderModelInfo,
   ProviderModelInfoSchema,
   type RemoteConfig,
   type SessionRagConfig,
@@ -132,6 +133,147 @@ const getChatboxHeaders = async () => {
     'CHATBOX-VERSION': await platform.getVersion(),
     'CHATBOX-OS': getOS(),
   }
+}
+
+const KOD_API_ORIGIN = 'https://kod.kai.com'
+
+const KodResultSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    code: z.number(),
+    message: z.string().optional().default(''),
+    data: dataSchema.nullish(),
+  })
+
+function unwrapKodResult<T>(result: { code: number; message?: string; data?: T | null }) {
+  if (result.code !== 0) {
+    throw new Error(result.message || 'Kod API request failed')
+  }
+  if (result.data == null) {
+    throw new Error(result.message || 'Kod API response missing data')
+  }
+  return result.data
+}
+
+export async function loginWithKod(params: { email: string; password: string; inviteCode?: string }) {
+  const json = await ofetch(`${KOD_API_ORIGIN}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: {
+      email: params.email,
+      password: params.password,
+      ...(params.inviteCode ? { inviteCode: params.inviteCode } : {}),
+    },
+    ignoreResponseError: true,
+  })
+
+  const data = unwrapKodResult(
+    KodResultSchema(
+      z.object({
+        token: z.string(),
+        newUser: z.boolean(),
+      })
+    ).parse(json)
+  )
+
+  return {
+    accessToken: data.token,
+    refreshToken: data.token,
+    newUser: data.newUser,
+  }
+}
+
+export interface KodRelayStationConfig {
+  url: string
+  apiKey: string
+}
+
+export async function getKodRelayStationConfig(token?: string | null): Promise<KodRelayStationConfig> {
+  if (!token) {
+    throw new Error('Missing Kod login token')
+  }
+
+  const json = await ofetch(`${KOD_API_ORIGIN}/api/relay-station/config`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    ignoreResponseError: true,
+  })
+
+  return unwrapKodResult(
+    KodResultSchema(
+      z.object({
+        url: z.string(),
+        apiKey: z.string(),
+      })
+    ).parse(json)
+  )
+}
+
+const OpenAICompatibleModelSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(),
+    context_length: z.number().optional(),
+    architecture: z
+      .object({
+        input_modalities: z.array(z.string()).optional(),
+      })
+      .optional(),
+    pricing: z
+      .object({
+        web_search: z.string().optional(),
+        internal_reasoning: z.string().optional(),
+      })
+      .optional(),
+    supported_parameters: z.array(z.string()).optional(),
+  })
+  .passthrough()
+
+const OpenAICompatibleModelsResponseSchema = z
+  .object({
+    data: z.array(OpenAICompatibleModelSchema),
+  })
+  .passthrough()
+
+function normalizeRelayBaseUrl(url: string) {
+  return url.replace(/\/+$/, '')
+}
+
+export async function fetchKodRelayStationModels(config: KodRelayStationConfig): Promise<ProviderModelInfo[]> {
+  const json = await ofetch(`${normalizeRelayBaseUrl(config.url)}/models`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+  })
+
+  const parsed = OpenAICompatibleModelsResponseSchema.parse(json)
+  return parsed.data.map((item) => {
+    const capabilities: ProviderModelInfo['capabilities'] = []
+    if (item.architecture?.input_modalities?.includes('image')) {
+      capabilities.push('vision')
+    }
+    if (item.pricing?.internal_reasoning && item.pricing.internal_reasoning !== '0') {
+      capabilities.push('reasoning')
+    }
+    if (item.supported_parameters?.some((param) => param === 'tools' || param === 'tool_choice')) {
+      capabilities.push('tool_use')
+    }
+    if (item.pricing?.web_search && item.pricing.web_search !== '0') {
+      capabilities.push('web_search')
+    }
+
+    return {
+      modelId: item.id,
+      nickname: item.name,
+      type: 'chat',
+      contextWindow: item.context_length,
+      capabilities,
+    }
+  })
 }
 
 // ========== 各个接口方法 ==========

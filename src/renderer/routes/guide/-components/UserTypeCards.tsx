@@ -5,7 +5,7 @@
 import { Box, Flex, Stack, Text, UnstyledButton } from '@mantine/core'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import iconChatbox from '@/static/icons/icon-chatbox.svg'
+import iconKod from '@/static/icon-kod.png'
 import iconSkip from '@/static/icons/icon-skip.svg'
 import type { UserType } from '../-hooks/useGuideSession'
 
@@ -21,7 +21,7 @@ interface CardConfig {
 }
 
 const cardConfigs: CardConfig[] = [
-  { type: 'novice', icon: iconChatbox, highlighted: true },
+  { type: 'novice', icon: iconKod, highlighted: true },
   { type: 'expert', icon: iconSkip, highlighted: false },
 ]
 

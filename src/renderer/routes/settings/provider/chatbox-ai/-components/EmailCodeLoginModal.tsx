@@ -1,9 +1,8 @@
-import { Alert, Anchor, Button, Flex, Stack, Text, TextInput } from '@mantine/core'
-import { IconRefresh } from '@tabler/icons-react'
-import { useCallback, useEffect, useRef } from 'react'
+import { Alert, Anchor, Button, Checkbox, Flex, PasswordInput, Stack, Text, TextInput } from '@mantine/core'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/components/layout/Overlay'
-import { useLogin } from './useLogin'
+import { loginWithKod } from '@/packages/remote'
 
 interface EmailCodeLoginModalProps {
   opened: boolean
@@ -12,57 +11,64 @@ interface EmailCodeLoginModalProps {
   onLoginSuccess: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>
 }
 
-export function EmailCodeLoginModal({ opened, onClose, language, onLoginSuccess }: EmailCodeLoginModalProps) {
-  const { t } = useTranslation()
-  const lastAutoSubmittedCodeRef = useRef('')
-  const {
-    email,
-    setEmail,
-    code,
-    setCode,
-    loginError,
-    loginState,
-    countdown,
-    hasEnteredCodeStep,
-    canSendCode,
-    canVerifyCode,
-    sendCode,
-    verifyCode,
-    reset,
-  } = useLogin({
-    language,
-    onLoginSuccess,
-  })
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return fallback
+}
 
-  const isSendingCode = loginState === 'sending_code'
-  const isVerifyingCode = loginState === 'verifying_code'
+export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCodeLoginModalProps) {
+  const { t } = useTranslation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [invitationCode, setInvitationCode] = useState('')
+  const [isFirstLogin, setIsFirstLogin] = useState(true)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleClose = useCallback(() => {
-    lastAutoSubmittedCodeRef.current = ''
-    reset()
+    setEmail('')
+    setPassword('')
+    setInvitationCode('')
+    setIsFirstLogin(true)
+    setError('')
+    setIsSubmitting(false)
     onClose()
-  }, [onClose, reset])
+  }, [onClose])
 
-  const handleVerify = useCallback(async () => {
-    const success = await verifyCode()
-    if (success) {
+  const handleSubmit = useCallback(async () => {
+    if (isSubmitting) return
+
+    if (!email.trim()) {
+      setError(t('Please enter your email address') || 'Please enter your email address')
+      return
+    }
+    if (!password) {
+      setError(t('Please enter password') || 'Please enter password')
+      return
+    }
+    if (isFirstLogin && !invitationCode.trim()) {
+      setError(t('Invitation code is required for first login') || 'Invitation code is required for first login')
+      return
+    }
+
+    setError('')
+    setIsSubmitting(true)
+    try {
+      const tokens = await loginWithKod({
+        email: email.trim(),
+        password,
+        inviteCode: isFirstLogin ? invitationCode.trim() : undefined,
+      })
+      await onLoginSuccess(tokens)
       handleClose()
+    } catch (error) {
+      setError(getErrorMessage(error, t('Login failed') || 'Login failed'))
+    } finally {
+      setIsSubmitting(false)
     }
-  }, [handleClose, verifyCode])
-
-  useEffect(() => {
-    if (code.length < 6) {
-      lastAutoSubmittedCodeRef.current = ''
-      return
-    }
-
-    if (!hasEnteredCodeStep || isVerifyingCode || code === lastAutoSubmittedCodeRef.current) {
-      return
-    }
-
-    lastAutoSubmittedCodeRef.current = code
-    void handleVerify()
-  }, [code, handleVerify, hasEnteredCodeStep, isVerifyingCode])
+  }, [email, handleClose, invitationCode, isFirstLogin, isSubmitting, onLoginSuccess, password, t])
 
   return (
     <Modal
@@ -76,88 +82,83 @@ export function EmailCodeLoginModal({ opened, onClose, language, onLoginSuccess 
     >
       <Stack gap="md">
         <Text size="sm" c="chatbox-secondary">
-          {hasEnteredCodeStep
-            ? t('Enter the 6-digit verification code we sent to your email.')
-            : t('If no account exists, it will automatically create one.')}
+          {t('Login requires email and password. Invitation code is required for first login.')}
         </Text>
+
+        {error && (
+          <Alert color="red" variant="light">
+            {error}
+          </Alert>
+        )}
 
         <Stack gap="xs">
           <Text size="sm" fw={500}>
             {t('Email')}
           </Text>
-
           <TextInput
             type="email"
             placeholder="name@example.com"
             value={email}
-            onChange={(e) => setEmail(e.currentTarget.value)}
-            disabled={(hasEnteredCodeStep && countdown > 0) || isSendingCode || isVerifyingCode}
+            onChange={(event) => setEmail(event.currentTarget.value)}
+            autoComplete="email"
+            disabled={isSubmitting}
           />
-
-          <Flex justify="flex-end" align="center" gap="sm">
-            <Button
-              variant="light"
-              onClick={() => void sendCode()}
-              loading={isSendingCode}
-              disabled={!canSendCode}
-              leftSection={hasEnteredCodeStep ? <IconRefresh size={14} /> : undefined}
-              style={{ flexShrink: 0 }}
-            >
-              {countdown > 0 ? t('Resend in {{count}}s', { count: countdown }) : t('Send Code')}
-            </Button>
-          </Flex>
         </Stack>
 
-        <Stack gap="xs" style={{ opacity: hasEnteredCodeStep ? 1 : 0.65 }}>
-          <Flex align="center" justify="space-between" gap="sm">
-            <Text size="sm" fw={500}>
-              {t('Verification Code')}
-            </Text>
-          </Flex>
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            {t('Password')}
+          </Text>
+          <PasswordInput
+            placeholder={t('Enter password') || 'Enter password'}
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+          />
+        </Stack>
 
+        <Checkbox
+          label={t('First login / create account')}
+          checked={isFirstLogin}
+          onChange={(event) => setIsFirstLogin(event.currentTarget.checked)}
+          disabled={isSubmitting}
+        />
+
+        <Stack gap="xs" style={{ opacity: isFirstLogin ? 1 : 0.65 }}>
+          <Text size="sm" fw={500}>
+            {t('Invitation code')}
+          </Text>
           <TextInput
-            value={code}
-            onChange={(event) => {
-              const nextValue = event.currentTarget.value.replace(/\D/g, '').slice(0, 6)
-              setCode(nextValue)
-            }}
-            disabled={!hasEnteredCodeStep || isVerifyingCode}
-            inputMode="numeric"
+            placeholder={t('Enter invitation code') || 'Enter invitation code'}
+            value={invitationCode}
+            onChange={(event) => setInvitationCode(event.currentTarget.value)}
             autoComplete="one-time-code"
-            maxLength={6}
-            styles={{
-              input: {
-                letterSpacing: '0.45em',
-                fontVariantNumeric: 'tabular-nums',
-              },
-            }}
+            disabled={!isFirstLogin || isSubmitting}
           />
+          <Text size="xs" c="chatbox-tertiary">
+            {t('Invitation code is required for first login')}
+          </Text>
         </Stack>
-
-        {loginError && (
-          <Alert color="red" variant="light" title={t('Verification failed')}>
-            {loginError}
-          </Alert>
-        )}
 
         <Text size="xs" c="chatbox-tertiary">
           {t('By continuing, you agree to our')}{' '}
-          <Anchor size="xs" href="https://chatboxai.app/terms" target="_blank" underline="hover">
+          <Anchor size="xs" href="https://kod.kai.com/terms" target="_blank" underline="hover">
             {t('Terms of Service')}
           </Anchor>
           . {t('Read our')}{' '}
-          <Anchor size="xs" href="https://chatboxai.app/privacy" target="_blank" underline="hover">
+          <Anchor size="xs" href="https://kod.kai.com/privacy" target="_blank" underline="hover">
             {t('Privacy Policy')}
           </Anchor>
           .
         </Text>
 
         <Flex gap="sm" justify="flex-end" align="center">
-          <Button color="chatbox-gray" variant="light" onClick={handleClose}>
+          <Button color="chatbox-gray" variant="light" onClick={handleClose} disabled={isSubmitting}>
             {t('Cancel')}
           </Button>
-          <Button onClick={() => void handleVerify()} loading={isVerifyingCode} disabled={!canVerifyCode}>
-            {t('Verify and Log in')}
+          <Button onClick={() => void handleSubmit()} loading={isSubmitting}>
+            {t('Login to Chatbox AI')}
           </Button>
         </Flex>
       </Stack>

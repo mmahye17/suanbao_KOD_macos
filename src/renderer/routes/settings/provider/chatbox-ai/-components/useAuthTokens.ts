@@ -1,3 +1,4 @@
+import { ModelProviderEnum } from '@shared/types'
 import { useCallback, useMemo } from 'react'
 import { authInfoStore, useAuthInfoStore } from '@/stores/authInfoStore'
 import * as premiumActions from '@/stores/premiumActions'
@@ -29,7 +30,19 @@ export function useAuthTokens() {
         await premiumActions.deactivate()
       }
 
-      settingsStore.setState({ hasExpiredLicense: false })
+      settingsStore.setState((state) => ({
+        hasExpiredLicense: false,
+        providers: {
+          ...(state.providers || {}),
+          [ModelProviderEnum.ChatboxAI]: {
+            ...(state.providers?.[ModelProviderEnum.ChatboxAI] || {}),
+            apiHost: undefined,
+            apiKey: undefined,
+            models: [],
+            excludedModels: [],
+          },
+        },
+      }))
 
       authInfoStore.getState().clearTokens()
 

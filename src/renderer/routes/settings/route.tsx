@@ -30,7 +30,7 @@ import { featureFlags } from '@/utils/feature-flags'
 const ITEMS = [
   {
     key: 'chatbox-ai',
-    label: 'Chatbox AI',
+    label: 'Kod AI',
     icon: <IconSparkles className="w-full h-full" />,
   },
   {
