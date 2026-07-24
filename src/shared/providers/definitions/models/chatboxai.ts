@@ -1,10 +1,9 @@
-import { type AnthropicProviderOptions, createAnthropic } from '@ai-sdk/anthropic'
+import { type AnthropicProviderOptions } from '@ai-sdk/anthropic'
 import {
   createGoogleGenerativeAI,
   type GoogleGenerativeAIProvider,
   type GoogleGenerativeAIProviderOptions,
 } from '@ai-sdk/google'
-import { createOpenAI, type OpenAIProvider } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { type ModelMessage, streamText, type ToolSet } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
@@ -79,53 +78,66 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
       })
     }
 
-    if (this.options.model.apiStyle === 'google') {
-      const provider = createGoogleGenerativeAI({
-        apiKey: this.options.licenseKey || '',
-        baseURL: `${getChatboxAPIOrigin()}/gateway/google-ai-studio/v1beta`,
-        headers: {
-          'Instance-Id': instanceId,
-          Authorization: `Bearer ${this.options.licenseKey || ''}`,
-          'chatbox-session-id': options.sessionId,
-        },
-        fetch: this.chatboxAIFetch.bind(this),
-      })
-      return provider
-    } else if (this.options.model.apiStyle === 'anthropic') {
-      const provider = createAnthropic({
-        apiKey: this.options.licenseKey || '',
-        baseURL: `${getChatboxAPIOrigin()}/gateway/anthropic/v1`,
-        headers: {
-          'Instance-Id': instanceId,
-          'chatbox-session-id': options.sessionId || '',
-        },
-        fetch: this.chatboxAIFetch.bind(this),
-      })
-      return provider
-    } else if (this.options.model.apiStyle === 'openai-responses') {
-      const provider = createOpenAI({
-        apiKey: this.options.licenseKey || '',
-        baseURL: `${getChatboxAPIOrigin()}/gateway/openai-responses/v1`,
-        headers: {
-          'Instance-Id': instanceId,
-          'chatbox-session-id': options.sessionId || '',
-        },
-        fetch: this.chatboxAIFetch.bind(this),
-      })
-      return provider
-    } else {
-      const provider = createOpenAICompatible({
-        name: 'ChatboxAI',
-        apiKey: this.options.licenseKey || '',
-        baseURL: `${getChatboxAPIOrigin()}/gateway/openai/v1`,
-        headers: {
-          'Instance-Id': instanceId,
-          'chatbox-session-id': options.sessionId || '',
-        },
-        fetch: this.chatboxAIFetch.bind(this),
-      })
-      return provider
-    }
+    // P0 去云化：禁用上游 Chatbox 云回退路径。
+    // 原逻辑在中转站未配置时，按 apiStyle 回退到 getChatboxAPIOrigin()/gateway/...（api.chatboxai.app），
+    // 会静默走上游云。改为明确抛错，引导用户登录/配置中转站，绝不偷偷连云。
+    // 原回退分支（google/anthropic/openai-responses/openai）保留为注释，便于回滚或后续彻底删除。
+    // TODO(P1): 配合许可证体系改造时，决定是否彻底删除这些分支。
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    void license
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    void instanceId
+    throw new Error(
+      'Kod AI relay station is not configured. Please log in to enable Kod AI.'
+    )
+    // 原上游回退分支（注释保留）：
+    // if (this.options.model.apiStyle === 'google') {
+    //   const provider = createGoogleGenerativeAI({
+    //     apiKey: this.options.licenseKey || '',
+    //     baseURL: `${getChatboxAPIOrigin()}/gateway/google-ai-studio/v1beta`,
+    //     headers: {
+    //       'Instance-Id': instanceId,
+    //       Authorization: `Bearer ${this.options.licenseKey || ''}`,
+    //       'chatbox-session-id': options.sessionId,
+    //     },
+    //     fetch: this.chatboxAIFetch.bind(this),
+    //   })
+    //   return provider
+    // } else if (this.options.model.apiStyle === 'anthropic') {
+    //   const provider = createAnthropic({
+    //     apiKey: this.options.licenseKey || '',
+    //     baseURL: `${getChatboxAPIOrigin()}/gateway/anthropic/v1`,
+    //     headers: {
+    //       'Instance-Id': instanceId,
+    //       'chatbox-session-id': options.sessionId || '',
+    //     },
+    //     fetch: this.chatboxAIFetch.bind(this),
+    //   })
+    //   return provider
+    // } else if (this.options.model.apiStyle === 'openai-responses') {
+    //   const provider = createOpenAI({
+    //     apiKey: this.options.licenseKey || '',
+    //     baseURL: `${getChatboxAPIOrigin()}/gateway/openai-responses/v1`,
+    //     headers: {
+    //       'Instance-Id': instanceId,
+    //       'chatbox-session-id': options.sessionId || '',
+    //     },
+    //     fetch: this.chatboxAIFetch.bind(this),
+    //   })
+    //   return provider
+    // } else {
+    //   const provider = createOpenAICompatible({
+    //     name: 'ChatboxAI',
+    //     apiKey: this.options.licenseKey || '',
+    //     baseURL: `${getChatboxAPIOrigin()}/gateway/openai/v1`,
+    //     headers: {
+    //       'Instance-Id': instanceId,
+    //       'chatbox-session-id': options.sessionId || '',
+    //     },
+    //     fetch: this.chatboxAIFetch.bind(this),
+    //   })
+    //   return provider
+    // }
   }
 
   protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
@@ -160,29 +172,31 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
 
   getChatModel(options: CallChatCompletionOptions) {
     const provider = this.getProvider(options)
-    if (this.options.model.apiStyle === 'google') {
-      return (provider as GoogleGenerativeAIProvider).chat(this.options.model.modelId)
-    } else if (this.options.model.apiStyle === 'openai-responses') {
-      return (provider as OpenAIProvider).responses(this.options.model.modelId)
-    } else {
-      return provider.languageModel(this.options.model.modelId)
-    }
+    // P0 去云化：上游 gateway 回退分支已禁用，中转站统一返回 OpenAICompatibleProvider，
+    // 不再按 apiStyle 断言成 Google/OpenAI-Responses 专用类型（那些分支已不可达）。
+    return provider.languageModel(this.options.model.modelId)
   }
 
   public async paint(
-    params: {
+    _params: {
       prompt: string
       images?: { imageUrl: string }[]
       num: number
       aspectRatio?: string
     },
-    signal?: AbortSignal,
-    callback?: (picBase64: string) => void | Promise<void>
+    _signal?: AbortSignal,
+    _callback?: (picBase64: string) => void | Promise<void>
   ): Promise<string[]> {
-    if (this.options.model.apiStyle === 'google') {
-      return this.paintWithGemini(params, signal, callback)
-    }
-    return this.paintWithChatboxAPI(params, signal, callback)
+    // P0 去云化：关闭 Kod AI 图像生成云路径。
+    // 原 paint() 走 paintWithGemini/paintWithChatboxAPI，均调用 getChatboxAPIOrigin()（api.chatboxai.app）。
+    // BYOK 图像生成(OpenAI DALL·E / Gemini 自实现 paint)不走本类，不受影响。
+    // 如需恢复，取消下方抛错并还原原分支逻辑。
+    throw new Error('Kod AI image generation is disabled. Please use a BYOK provider (e.g. OpenAI DALL·E).')
+    // 原逻辑保留（注释）便于回滚：
+    // if (this.options.model.apiStyle === 'google') {
+    //   return this.paintWithGemini(params, signal, callback)
+    // }
+    // return this.paintWithChatboxAPI(params, signal, callback)
   }
 
   private async paintWithGemini(

@@ -1,7 +1,6 @@
 import { BaseError } from '@shared/models/errors'
 import { getModel } from '@shared/providers'
 import type { ImageGeneration, ImageGenerationModel } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types'
 import { createModelDependencies } from '@/adapters'
 import { getLogger } from '@/lib/utils'
 import {
@@ -38,8 +37,12 @@ function getLicenseKey(): string {
   return licenseKey
 }
 
-function shouldUseAsyncPath(provider: string): boolean {
-  return provider === ModelProviderEnum.ChatboxAI
+// P0 去云化：禁用 Kod AI(ChatboxAI) 的异步云图像生成路径。
+// 原逻辑对 ChatboxAI 返回 true，走 submitImageGeneration → api.chatboxai.app 异步任务，直连上游云。
+// 改为永远 false 后，所有 provider 统一走 generateImagesDirect → model.paint()，
+// 其中 ChatboxAI.paint() 已被改为抛错（见 chatboxai.ts），BYOK(OpenAI/Gemini) 不受影响。
+function shouldUseAsyncPath(_provider: string): boolean {
+  return false
 }
 
 function getErrorRecordUpdate(

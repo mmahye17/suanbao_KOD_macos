@@ -225,7 +225,8 @@ const ShortcutSettingSchema = z.object({
 
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
-    provider: z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit']).catch('build-in'),
+    // P0 去云化：默认搜索引擎从 build-in(Chatbox 云) 改为 tavily，旧配置解析失败时也回退到 tavily 而非 build-in。
+    provider: z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit']).catch('tavily'),
     tavilyApiKey: z.string().optional(),
     bochaApiKey: z.string().optional(),
     queritApiKey: z.string().optional(),
