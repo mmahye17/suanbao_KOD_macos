@@ -8,6 +8,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { type ModelMessage, streamText, type ToolSet } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
 import { addAnthropicCacheControl } from '../../../models/anthropic-cache'
+import { ApiError } from '../../../models/errors'
 import type {
   CallChatCompletionOptions,
   ChatStreamOptions,
@@ -41,7 +42,6 @@ interface Config {
 }
 
 // 将chatboxAIFetch移到类内部作为私有方法
-
 export default class ChatboxAI extends AbstractAISDKModel implements ModelInterface {
   public name = 'ChatboxAI'
 
@@ -87,9 +87,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
     void license
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     void instanceId
-    throw new Error(
-      'Kod AI relay station is not configured. Please log in to enable Kod AI.'
-    )
+    throw new Error('Kod AI relay station is not configured. Please log in to enable Kod AI.')
     // 原上游回退分支（注释保留）：
     // if (this.options.model.apiStyle === 'google') {
     //   const provider = createGoogleGenerativeAI({

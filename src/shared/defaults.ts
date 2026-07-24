@@ -172,8 +172,8 @@ export function chatSessionSettings(): SessionSettings {
 
 export function pictureSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'DALL-E-3',
+    provider: ModelProviderEnum.OpenAI,
+    modelId: 'gpt-image-1',
     imageGenerateNum: 1,
     dalleStyle: 'vivid',
   }

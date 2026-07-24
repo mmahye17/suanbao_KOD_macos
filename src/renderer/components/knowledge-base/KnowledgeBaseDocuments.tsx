@@ -43,8 +43,6 @@ import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { trackJkClickEvent } from '@/analytics/jk'
-import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import { useKnowledgeBaseFiles, useKnowledgeBaseFilesActions, useKnowledgeBaseFilesCount } from '@/hooks/knowledge-base'
 import { useChunksPreview } from '@/hooks/useChunksPreview'
 import { toastError } from '@/packages/toast'
@@ -52,7 +50,6 @@ import platform from '@/platform'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
 import ChunksPreviewModal from './ChunksPreviewModal'
-import { RemoteRetryModal } from './RemoteRetryModal'
 
 interface KnowledgeBaseDocumentsProps {
   knowledgeBase: KnowledgeBase | null
@@ -69,7 +66,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
   const [showScrollIndicator, setShowScrollIndicator] = useState(true)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showUploadArea, setShowUploadArea] = useState(false)
-  const [showRemoteRetryModal, setShowRemoteRetryModal] = useState(false)
+  const [retryingAllFailedFiles, setRetryingAllFailedFiles] = useState(false)
   const [sizeRejectedFiles, setSizeRejectedFiles] = useState<RejectedFile[]>([])
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -115,23 +112,13 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     return () => clearInterval(pollInterval)
   }, [knowledgeBase?.id, allFiles, refetch, refetchCount])
 
-  // Failed files for remote retry feature
+  // Failed files for retry actions
   const failedFiles = useMemo(() => allFiles.filter((file) => file.status === 'failed'), [allFiles])
-
-  // Parser types that should NOT show the "use Chatbox AI" suggestion when they fail
-  const PARSER_NO_SUGGESTION_LIST: string[] = ['mineru', 'chatbox-ai']
-
-  // Check if we should show the Chatbox AI suggestion for failed files
-  // Show suggestion only if there are failed files that are NOT in the exception list
-  const shouldShowChatboxAISuggestion = useMemo(() => {
-    if (failedFiles.length === 0) return false
-    // Check if any failed file used a parser that should show the suggestion
-    return failedFiles.some(
-      (file) =>
-        file.error !== KNOWLEDGE_BASE_PARSED_CONTENT_TOO_LARGE_ERROR &&
-        !PARSER_NO_SUGGESTION_LIST.includes(file.parser_type || 'local')
-    )
-  }, [failedFiles])
+  const retryableFailedFiles = useMemo(
+    () => failedFiles.filter((file) => file.error !== KNOWLEDGE_BASE_PARSED_CONTENT_TOO_LARGE_ERROR),
+    [failedFiles]
+  )
+  const shouldShowRetryBanner = retryableFailedFiles.length > 0
 
   // MIME type correction for Windows compatibility
   const correctMimeType = useCallback((file: File): FileMeta => {
@@ -490,6 +477,20 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     [knowledgeBase?.id, refetch, refetchCount, invalidateFiles]
   )
 
+  const handleRetryAllFiles = useCallback(async () => {
+    if (!knowledgeBase?.id || retryableFailedFiles.length === 0) return
+
+    setRetryingAllFailedFiles(true)
+    try {
+      const knowledgeBaseController = platform.getKnowledgeBaseController()
+      await Promise.allSettled(retryableFailedFiles.map((file) => knowledgeBaseController.retryFile(file.id)))
+      await Promise.all([refetch(), refetchCount()])
+      invalidateFiles(knowledgeBase.id)
+    } finally {
+      setRetryingAllFailedFiles(false)
+    }
+  }, [invalidateFiles, knowledgeBase?.id, refetch, refetchCount, retryableFailedFiles])
+
   // Handle file pause
   const handlePauseFile = useCallback(
     async (fileId: number) => {
@@ -611,7 +612,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
             case 'mineru':
               return t('MinerU parse failed')
             case 'chatbox-ai':
-              return t('Chatbox AI parse failed')
+              return t('Local parse failed')
             default:
               return t('Local parse failed')
           }
@@ -621,7 +622,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
               limit: KNOWLEDGE_BASE_MAX_PARSED_CONTENT_SIZE_LABEL,
             })
           : error || t('Processing failed')
-        const isRemoteParser = parserType === 'mineru' || parserType === 'chatbox-ai'
+        const isRemoteParser = parserType === 'mineru'
         return (
           <Flex gap={4} align="center">
             <Tooltip label={errorLabel} multiline w={300} withArrow position="top" transitionProps={{ duration: 200 }}>
@@ -840,47 +841,17 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
               </Box>
             )}
 
-            {/* Failed files banner - show Chatbox AI suggestion only for local parser failures */}
-            {shouldShowChatboxAISuggestion && (
+            {/* Failed files banner - local retry only */}
+            {shouldShowRetryBanner && (
               <Alert variant="light" color="yellow" p="sm">
                 <Flex gap="xs" align="center" justify="space-between">
                   <Flex gap="xs" align="center" style={{ flex: 1 }}>
-                    <Text size="sm">{t('{{count}} file(s) failed to parse', { count: failedFiles.length })}</Text>
+                    <Text size="sm">{t('{{count}} file(s) failed to parse', { count: retryableFailedFiles.length })}</Text>
                   </Flex>
                   <Stack gap={4} align="flex-end" className="flex-shrink-0">
-                    <Button size="xs" variant="light" onClick={() => setShowRemoteRetryModal(true)}>
-                      {t('Use server parsing')}
+                    <Button size="xs" variant="light" onClick={handleRetryAllFiles} loading={retryingAllFailedFiles}>
+                      {t('Retry All')} ({retryableFailedFiles.length})
                     </Button>
-                    <Tooltip
-                      label={t(
-                        'If you have never had a license before, you can claim it after logging in on the official website.'
-                      )}
-                      withArrow
-                      multiline
-                      maw={240}
-                      position="bottom-end"
-                      styles={{
-                        tooltip: {
-                          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                          backdropFilter: 'blur(4px)',
-                        },
-                      }}
-                    >
-                      <Text
-                        size="xs"
-                        c="dimmed"
-                        className="cursor-pointer hover:text-blue-500 transition-colors"
-                        onClick={() => {
-                          trackJkClickEvent(JK_EVENTS.FREE_LICENSE_CLAIM_CLICK, {
-                            pageName: JK_PAGE_NAMES.SETTING_PAGE,
-                            content: 'kb_error',
-                          })
-                          platform.openLink('https://chatboxai.app/login')
-                        }}
-                      >
-                        {t('Free trial available')} →
-                      </Text>
-                    </Tooltip>
                   </Stack>
                 </Flex>
               </Alert>
@@ -937,9 +908,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
                                     </Text>
                                     {doc.parser_type && (
                                       <Pill size="xs" c="dimmed">
-                                        {doc.parser_type === 'chatbox-ai'
-                                          ? 'Chatbox AI'
-                                          : doc.parser_type === 'mineru'
+                                        {doc.parser_type === 'mineru'
                                             ? 'MinerU'
                                             : 'Local'}
                                       </Pill>
@@ -1088,16 +1057,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         knowledgeBaseId={knowledgeBase?.id}
       />
 
-      {/* Remote Retry Modal */}
-      <RemoteRetryModal
-        opened={showRemoteRetryModal}
-        onClose={() => setShowRemoteRetryModal(false)}
-        failedFiles={failedFiles}
-        onSuccess={() => {
-          refetch()
-          refetchCount()
-        }}
-      />
     </Stack>
   )
 }

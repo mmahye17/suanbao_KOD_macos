@@ -100,7 +100,7 @@ export function RouteComponent() {
       <AdaptiveSelect
         comboboxProps={{ withinPortal: true, withArrow: true }}
         data={[
-          { value: 'build-in', label: 'Chatbox AI' },
+          { value: 'build-in', label: 'DuckDuckGo' },
           { value: 'bing', label: 'Bing Search (Free)' },
           { value: 'tavily', label: 'Tavily' },
           { value: 'bocha', label: 'BoCha' },
@@ -148,7 +148,7 @@ export function RouteComponent() {
       </Stack>
       {extension.webSearch.provider === 'build-in' && (
         <Text size="xs" c="chatbox-gray">
-          {t('Chatbox Search is a paid feature with advanced capabilities and better performance.')}
+          {t('DuckDuckGo Search is provided for free use, but it may have limitations and is subject to change.')}
         </Text>
       )}
       {extension.webSearch.provider === 'bing' && (

@@ -1,6 +1,7 @@
 import { ModelProviderEnum, type ProviderModelInfo } from '@shared/types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
+import { enrichModelsFromRegistry } from '@/packages/model-registry'
 import { fetchKodRelayStationModels, getKodRelayStationConfig } from '@/packages/remote'
 import { useAuthInfoStore } from '@/stores/authInfoStore'
 import { useProviderSettings } from '@/stores/settingsStore'
@@ -20,7 +21,8 @@ const useChatboxAIModels = () => {
       }
 
       const relayStation = await getKodRelayStationConfig(accessToken)
-      const models = await fetchKodRelayStationModels(relayStation)
+      const fetchedModels = await fetchKodRelayStationModels(relayStation)
+      const models = enrichModelsFromRegistry(fetchedModels, ModelProviderEnum.ChatboxAI)
 
       setProviderSettings((previousSettings) => ({
         ...previousSettings,

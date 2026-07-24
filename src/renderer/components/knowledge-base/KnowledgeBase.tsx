@@ -261,7 +261,7 @@ const KnowledgeBasePage: React.FC = () => {
   function formatParserType(parserType?: DocumentParserType): string {
     switch (parserType) {
       case 'chatbox-ai':
-        return 'Chatbox AI'
+        return t('Local')
       case 'mineru':
         return 'MinerU'
       case 'local':
@@ -330,7 +330,6 @@ const KnowledgeBasePage: React.FC = () => {
       rerankModel = chatboxAIModels.rerank
       visionModel = chatboxAIModels.vision
       // Chatbox AI mode uses local parsing by default to save compute points
-      // Users can retry with server parsing (Chatbox AI) if local parsing fails
       documentParser = { type: 'local' }
     } else {
       if (!newEmbeddingModel) return

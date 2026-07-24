@@ -20,7 +20,7 @@ import {
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
-import * as dateFns from 'date-fns'
+import dayjs from 'dayjs'
 import { concat } from 'lodash'
 import type { UIElementData } from 'photoswipe'
 import type React from 'react'
@@ -218,14 +218,14 @@ const _Message: FC<Props> = (props) => {
   }
 
   if (showMessageTimestamp && msg.timestamp !== undefined) {
-    const date = new Date(msg.timestamp)
+    const date = dayjs(msg.timestamp)
     let messageTimestamp: string
-    if (dateFns.isToday(date)) {
-      messageTimestamp = dateFns.format(date, 'HH:mm')
-    } else if (dateFns.isThisYear(date)) {
-      messageTimestamp = dateFns.format(date, 'MM-dd HH:mm')
+    if (date.isSame(dayjs(), 'day')) {
+      messageTimestamp = date.format('HH:mm')
+    } else if (date.isSame(dayjs(), 'year')) {
+      messageTimestamp = date.format('MM-DD HH:mm')
     } else {
-      messageTimestamp = dateFns.format(date, 'yyyy-MM-dd HH:mm')
+      messageTimestamp = date.format('YYYY-MM-DD HH:mm')
     }
     tips.push({ label: messageTimestamp })
   }
