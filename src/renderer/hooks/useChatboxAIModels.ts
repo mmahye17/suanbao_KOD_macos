@@ -43,14 +43,20 @@ const useChatboxAIModels = () => {
   const allChatboxAIModels = accessToken ? data?.models || EMPTY_MODELS : EMPTY_MODELS
 
   const chatboxAIModels = useMemo(
-    () => allChatboxAIModels.filter((m) => !kodSettings?.excludedModels?.includes(m.modelId)),
+    () => allChatboxAIModels.filter((m) => m.type !== 'image' && !kodSettings?.excludedModels?.includes(m.modelId)),
     [allChatboxAIModels, kodSettings]
+  )
+
+  // 图像生成模型（type === 'image'），分拣到 image 组供 Image Creator / 图片会话使用
+  const chatboxAIImageModels = useMemo(
+    () => allChatboxAIModels.filter((m) => m.type === 'image'),
+    [allChatboxAIModels]
   )
 
   return {
     allChatboxAIModels,
     chatboxAIModels,
-    chatboxAIImageModels: EMPTY_MODELS,
+    chatboxAIImageModels,
     ...others,
   }
 }

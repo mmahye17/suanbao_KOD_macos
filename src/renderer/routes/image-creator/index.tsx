@@ -359,7 +359,8 @@ function ImageCreatorPage() {
       return
     }
 
-    if (selectedProvider === ModelProviderEnum.ChatboxAI && !settingsStore.getState().licenseKey) {
+    // P0 去云化：Kod AI 走中转站，不再需要 licenseKey，改为检查登录态（有 accessToken 才会拉到中转站配置）
+    if (selectedProvider === ModelProviderEnum.ChatboxAI && !isLoggedIn) {
       toastActions.add(t('Please log in to Chatbox AI first'))
       return
     }
@@ -388,8 +389,10 @@ function ImageCreatorPage() {
       setReferenceImages([])
     } catch (error) {
       log.error('Failed to generate image:', error)
+      const message = error instanceof Error ? error.message : String(error)
+      toastActions.add(t('Failed to generate image') + (message ? `: ${message}` : ''))
     }
-  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating, t])
+  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating, isLoggedIn, t])
 
   const handleQuickPromptSubmit = useCallback(
     async (quickPrompt: string) => {
@@ -399,7 +402,8 @@ function ImageCreatorPage() {
         return
       }
 
-      if (selectedProvider === ModelProviderEnum.ChatboxAI && !settingsStore.getState().licenseKey) {
+      // P0 去云化：Kod AI 走中转站，改为检查登录态而非 licenseKey
+      if (selectedProvider === ModelProviderEnum.ChatboxAI && !isLoggedIn) {
         toastActions.add(t('Please log in to Chatbox AI first'))
         return
       }
@@ -417,9 +421,11 @@ function ImageCreatorPage() {
         })
       } catch (error) {
         log.error('Failed to generate image:', error)
+        const message = error instanceof Error ? error.message : String(error)
+        toastActions.add(t('Failed to generate image') + (message ? `: ${message}` : ''))
       }
     },
-    [selectedProvider, selectedModel, isCurrentlyGenerating, t]
+    [selectedProvider, selectedModel, isCurrentlyGenerating, isLoggedIn, t]
   )
 
   const handleUseAsReference = useCallback((storageKey: string, sourceRecordId?: string) => {

@@ -54,10 +54,24 @@ function mergeImageModels(remoteModels: ImageModelOption[], manualModels: ImageM
 }
 
 function preferChatboxDefaultImageModel(models: ImageModelOption[]): ImageModelOption[] {
-  const preferredModelId = 'gpt-image-1.5'
-  const preferredModel = models.find((model) => model.modelId === preferredModelId)
-  if (!preferredModel) return models
-  return [preferredModel, ...models.filter((model) => model.modelId !== preferredModelId)]
+  // Kod AI 生图走中转站 /v1/chat/completions（Gemini imagine），优先选网关白名单内的图片模型
+  const preferredIds = [
+    'gemini-2.5-flash-image',
+    'gemini-3-pro-image-preview',
+    'gemini-3.1-flash-image-preview',
+    'gemini-2.0-flash-exp-image-generation',
+  ]
+  for (const preferredModelId of preferredIds) {
+    const preferredModel = models.find((model) => model.modelId === preferredModelId)
+    if (preferredModel) {
+      return [preferredModel, ...models.filter((model) => model.modelId !== preferredModelId)]
+    }
+  }
+  const geminiImage = models.find((model) => /gemini/i.test(model.modelId) && /image/i.test(model.modelId))
+  if (geminiImage) {
+    return [geminiImage, ...models.filter((model) => model.modelId !== geminiImage.modelId)]
+  }
+  return models
 }
 
 export function useProviderImageModels(provider: ModelProviderEnum, enabled: boolean): ImageModelOption[] {

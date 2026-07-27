@@ -266,10 +266,14 @@ export async function fetchKodRelayStationModels(config: KodRelayStationConfig):
       capabilities.push('web_search')
     }
 
+    // 识别图像生成模型（按 modelId 关键字判断），归入 image 组而非 chat 组
+    const modelIdLower = item.id.toLowerCase()
+    const isImageModel = /image|dall|flux|stable-diffusion|sdxl|midjourney/.test(modelIdLower)
+
     return {
       modelId: item.id,
       nickname: item.name,
-      type: 'chat',
+      type: isImageModel ? ('image' as const) : 'chat',
       contextWindow: item.context_length,
       capabilities,
     }

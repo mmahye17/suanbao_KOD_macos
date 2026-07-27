@@ -4,6 +4,7 @@ import {
   type GoogleGenerativeAIProvider,
   type GoogleGenerativeAIProviderOptions,
 } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { type ModelMessage, streamText, type ToolSet } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
@@ -39,6 +40,25 @@ interface Options {
 
 interface Config {
   uuid: string
+}
+
+/**
+ * 从中转站（kai-new-api）返回的文本中提取 data URL 图片。
+ * 网关会把 Gemini inlineData 转成：![image](data:image/png;base64,...)
+ */
+function extractImagesFromRelayText(text: string): string[] {
+  if (!text) return []
+  const images: string[] = []
+  const regex = /data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text)) !== null) {
+    const mediaType = match[1]
+    const base64 = match[2].replace(/\s+/g, '')
+    if (base64) {
+      images.push(`data:${mediaType};base64,${base64}`)
+    }
+  }
+  return images
 }
 
 // 将chatboxAIFetch移到类内部作为私有方法
@@ -175,27 +195,86 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
     return provider.languageModel(this.options.model.modelId)
   }
 
+  // P0→增强：图像生成改走中转站（对话式生图，Gemini 风格）。
+  // 不再用 OpenAI 的 /v1/images/generations 接口（中转站 Gemini 渠道不支持，报 convert_request_failed）。
+  // 改为走 /v1/chat/completions。中转站对 Gemini imagine 模型会自动注入 ResponseModalities。
+  // 注意：kai-new-api 把 Gemini inlineData 转成 markdown 文本 ![image](data:...;base64,...)，
+  // OpenAI 兼容流只会产出 text-delta，不会产出 file chunk，因此必须从文本中解析图片。
   public async paint(
-    _params: {
+    params: {
       prompt: string
       images?: { imageUrl: string }[]
       num: number
       aspectRatio?: string
     },
-    _signal?: AbortSignal,
-    _callback?: (picBase64: string) => void | Promise<void>
+    signal?: AbortSignal,
+    callback?: (picBase64: string) => void | Promise<void>
   ): Promise<string[]> {
-    // P0 去云化：关闭 Kod AI 图像生成云路径。
-    // 原 paint() 走 paintWithGemini/paintWithChatboxAPI，均调用 getChatboxAPIOrigin()（api.chatboxai.app）。
-    // BYOK 图像生成(OpenAI DALL·E / Gemini 自实现 paint)不走本类，不受影响。
-    // 如需恢复，取消下方抛错并还原原分支逻辑。
-    throw new Error('Kod AI image generation is disabled. Please use a BYOK provider (e.g. OpenAI DALL·E).')
-    // 原逻辑保留（注释）便于回滚：
-    // if (this.options.model.apiStyle === 'google') {
-    //   return this.paintWithGemini(params, signal, callback)
-    // }
-    // return this.paintWithChatboxAPI(params, signal, callback)
+    const relayApiHost = this.options.apiHost?.replace(/\/+$/, '')
+    if (!relayApiHost || !this.options.apiKey) {
+      throw new Error('Kod AI relay station is not configured. Please log in to enable Kod AI image generation.')
+    }
+
+    const provider = createOpenAI({
+      apiKey: this.options.apiKey,
+      baseURL: relayApiHost,
+      fetch: this.chatboxAIFetch.bind(this),
+    })
+    const model = provider.chat(this.options.model.modelId)
+
+    const messageContent: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = []
+    if (params.images && params.images.length > 0) {
+      for (const img of params.images) {
+        messageContent.push({ type: 'image', image: img.imageUrl })
+      }
+    }
+    messageContent.push({ type: 'text', text: params.prompt })
+
+    const results: string[] = []
+    for (let i = 0; i < params.num; i++) {
+      const result = streamText({
+        model,
+        messages: [{ role: 'user', content: messageContent }],
+        abortSignal: signal,
+        // Image generation is billable; network-error retries could double-charge.
+        maxRetries: 0,
+      })
+
+      const textParts: string[] = []
+      const seen = new Set<string>()
+      const pushImage = async (dataUrl: string) => {
+        if (seen.has(dataUrl)) return
+        seen.add(dataUrl)
+        results.push(dataUrl)
+        await callback?.(dataUrl)
+      }
+
+      for await (const chunk of result.fullStream) {
+        if (chunk.type === 'file' && chunk.file.mediaType?.startsWith('image/') && chunk.file.base64) {
+          await pushImage(`data:${chunk.file.mediaType};base64,${chunk.file.base64}`)
+        } else if (chunk.type === 'text-delta' && chunk.text) {
+          // AI SDK v6: text-delta 字段是 `text`，不是 `textDelta`
+          textParts.push(chunk.text)
+        } else if (chunk.type === 'error') {
+          console.error('[KodAI.paint] stream error:', chunk.error)
+          throw chunk.error instanceof Error ? chunk.error : new Error(String(chunk.error))
+        }
+      }
+
+      // 中转站把图片嵌在文本里：![image](data:image/png;base64,...)
+      for (const dataUrl of extractImagesFromRelayText(textParts.join(''))) {
+        await pushImage(dataUrl)
+      }
+    }
+
+    if (results.length === 0) {
+      throw new Error(
+        'No image returned from relay station. Make sure the selected model supports image generation (e.g. gemini-*-image*).'
+      )
+    }
+    return results
   }
+
 
   private async paintWithGemini(
     params: {
