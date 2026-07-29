@@ -5,6 +5,7 @@ import platform from '@/platform'
 import { authInfoStore } from '@/stores/authInfoStore'
 import {
   CHATBOX_BUILD_CHANNEL,
+  KOD_API_ORIGIN,
   USE_BETA_API,
   USE_BETA_CHATBOX,
   USE_LOCAL_API,
@@ -98,14 +99,16 @@ async function getAuthenticatedAfetch() {
 
 // ========== API ORIGIN 根据可用性维护 ==========
 
-// const RELEASE_ORIGIN = 'https://releases.chatboxai.app'
+// KOD: Replaced chatboxai.app origins with KOD's own infrastructure.
+// KOD_API_ORIGIN (from @/variables) defaults to https://kod.kai.com, overridable via env var.
+
 export function getAPIOrigin() {
   if (USE_LOCAL_API) {
     return 'http://localhost:8002'
   } else if (USE_BETA_API) {
-    return 'https://api-beta.chatboxai.app'
+    return KOD_API_ORIGIN
   } else if (USE_NEWDB_API) {
-    return 'https://beta-new-db.chatboxai.app'
+    return KOD_API_ORIGIN
   } else {
     return chatboxaiAPI.getChatboxAPIOrigin()
   }
@@ -115,9 +118,9 @@ export function getChatboxOrigin() {
   if (USE_LOCAL_CHATBOX) {
     return 'http://localhost:3002'
   } else if (USE_BETA_CHATBOX) {
-    return 'https://beta.chatboxai.app'
+    return KOD_API_ORIGIN
   } else {
-    return 'https://chatboxai.app'
+    return KOD_API_ORIGIN
   }
 }
 
@@ -125,17 +128,18 @@ export function buildChatboxUrl(path: string) {
   return new URL(path, getChatboxOrigin()).toString()
 }
 
+// KOD: Replaced CHATBOX- prefixed headers with KOD- prefixes
 const getChatboxHeaders = async () => {
   return {
-    'CHATBOX-PLATFORM': await platform.getPlatform(),
-    'CHATBOX-PLATFORM-TYPE': platform.type,
-    'CHATBOX-CHANNEL': CHATBOX_BUILD_CHANNEL,
-    'CHATBOX-VERSION': await platform.getVersion(),
-    'CHATBOX-OS': getOS(),
+    'KOD-PLATFORM': await platform.getPlatform(),
+    'KOD-PLATFORM-TYPE': platform.type,
+    'KOD-CHANNEL': CHATBOX_BUILD_CHANNEL,
+    'KOD-VERSION': await platform.getVersion(),
+    'KOD-OS': getOS(),
   }
 }
 
-const KOD_API_ORIGIN = 'https://kod.kai.com'
+// KOD_API_ORIGIN is imported from @/variables, configurable via process.env.KOD_API_ORIGIN
 
 const KodResultSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
   z.object({
@@ -282,21 +286,10 @@ export async function fetchKodRelayStationModels(config: KodRelayStationConfig):
 
 // ========== 各个接口方法 ==========
 
-export async function checkNeedUpdate(version: string, os: string, config: Config, settings: Settings) {
-  type Response = {
-    need_update?: boolean
-  }
-  // const res = await ofetch<Response>(`${RELEASE_ORIGIN}/chatbox_need_update/${version}`, {
-  const res = await ofetch<Response>(`${getAPIOrigin()}/chatbox_need_update/${version}`, {
-    method: 'POST',
-    retry: 3,
-    body: {
-      uuid: config.uuid,
-      os: os,
-      allowReportingAndTracking: settings.allowReportingAndTracking ? 1 : 0,
-    },
-  })
-  return !!res.need_update
+// KOD: checkNeedUpdate disabled — Kod server does not have the legacy Chatbox
+// update-check endpoint. Returns false so the update badge never shows.
+export async function checkNeedUpdate(_version: string, _os: string, _config: Config, _settings: Settings) {
+  return false
 }
 
 // export async function getSponsorAd(): Promise<null | SponsorAd> {
@@ -321,58 +314,35 @@ export async function checkNeedUpdate(version: string, os: string, config: Confi
 //     return res['data'] || []
 // }
 
-export async function listCopilotTags(lang: string) {
-  type Response = {
-    data: string[]
-  }
-  const res = await ofetch<Response>(`${getAPIOrigin()}/api/system_copilots/tags/${lang}`, {
-    method: 'GET',
-    retry: 3,
-  })
-  return res.data
+// KOD: Copilot APIs disabled — Kod portal does not have these Chatbox marketplace endpoints.
+// Functions return empty results silently instead of throwing 500 errors.
+// To re-enable when Kod marketplace is ready, remove the early returns.
+
+export async function listCopilotTags(_lang: string) {
+  return []
 }
 
 export async function listCopilotsByCursor(
-  lang: string,
-  filters?: {
+  _lang: string,
+  _filters?: {
     limit?: number
     cursor?: string
     tag?: string
     search?: string
   }
-) {
-  type Response = {
-    data: CopilotDetail[]
-    next_cursor: string | null
-  }
-  const res = await ofetch<Response>(`${getAPIOrigin()}/api/system_copilots/list`, {
-    method: 'POST',
-    retry: 3,
-    body: { lang, ...filters },
-  })
-  return res
+): Promise<{ data: CopilotDetail[]; next_cursor: string | null }> {
+  return { data: [], next_cursor: null }
 }
 
-export async function recordCopilotUsage(params: {
+export async function recordCopilotUsage(_params: {
   id: string
   action: 'create_session' | 'create_thread' | 'create_message' | 'use_copilot'
 }) {
-  await ofetch(`${getAPIOrigin()}/api/system_copilots/record_usage`, {
-    method: 'POST',
-    body: {
-      ...params,
-      device_id: (await platform.getConfig()).uuid,
-    },
-  })
+  // no-op: Kod does not have copilot usage tracking
 }
 
-export async function recordCopilotShare(detail: CopilotDetail) {
-  await ofetch(`${getAPIOrigin()}/api/copilots/share-record`, {
-    method: 'POST',
-    body: {
-      detail: detail,
-    },
-  })
+export async function recordCopilotShare(_detail: CopilotDetail) {
+  // no-op: Kod does not have copilot sharing
 }
 
 export async function getPremiumPrice() {
@@ -667,22 +637,10 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
   }
 }
 
-export async function parseUserLinkFree(params: { url: string }) {
-  type Response = {
-    title: string
-    text: string
-  }
-  const afetch = await getAfetch()
-  const res = await afetch(`https://cors-proxy.chatboxai.app/api/fetch-webpage`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getChatboxHeaders()),
-    },
-    body: JSON.stringify(params),
-  })
-  const json: Response = await res.json()
-  return json
+// DISABLED (Sprint 1): was calling cors-proxy.chatboxai.app
+// TODO: replace with Kod's own CORS proxy when available
+export async function parseUserLinkFree(_params: { url: string }): Promise<{ title: string; text: string }> {
+  throw new Error('parseUserLinkFree is disabled. CORS proxy has been removed (was cors-proxy.chatboxai.app).')
 }
 
 export async function webBrowsing(params: { licenseKey: string; query: string }) {
@@ -1066,7 +1024,7 @@ export async function refreshAccessToken(params: { refreshToken: string }) {
     {
       method: 'POST',
       headers: {
-        'x-chatbox-refresh-token': params.refreshToken,
+        'x-kod-refresh-token': params.refreshToken,
         ...(await getChatboxHeaders()),
       },
     },
@@ -1078,8 +1036,8 @@ export async function refreshAccessToken(params: { refreshToken: string }) {
   const json: Response = await res.json()
   // log.info('✅ refreshAccessToken response', json)
 
-  const accessToken = res.headers.get('x-chatbox-access-token')
-  const refreshToken = res.headers.get('x-chatbox-refresh-token')
+  const accessToken = res.headers.get('x-kod-access-token')
+  const refreshToken = res.headers.get('x-kod-refresh-token')
 
   if (!accessToken || !refreshToken) {
     log.error('❌ Missing tokens in response headers:', {

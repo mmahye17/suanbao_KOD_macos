@@ -106,10 +106,10 @@ export function createAfetch(platformInfo: PlatformInfo) {
             ...init,
             headers: {
               ...init?.headers,
-              'CHATBOX-PLATFORM': platformInfo.platform,
-              'CHATBOX-PLATFORM-TYPE': platformInfo.type,
-              'CHATBOX-OS': platformInfo.os,
-              'CHATBOX-VERSION': platformInfo.version,
+              'KOD-PLATFORM': platformInfo.platform,
+              'KOD-PLATFORM-TYPE': platformInfo.type,
+              'KOD-OS': platformInfo.os,
+              'KOD-VERSION': platformInfo.version,
             },
           }
         }
@@ -219,7 +219,7 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
     // 构建包含 token 的 headers 的辅助函数
     function buildHeaders(accessToken: string) {
       const authHeaders: Record<string, string> = {
-        'x-chatbox-access-token': accessToken,
+        'x-kod-access-token': accessToken,
       }
 
       if (isChatboxAPI(url)) {

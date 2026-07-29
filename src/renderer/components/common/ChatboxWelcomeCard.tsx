@@ -33,7 +33,7 @@ export function ChatboxWelcomeCard(props: { mode: HomeWelcomeCardMode; pageName:
       <Stack gap="sm">
         <Stack gap="xxs" align="center">
           <Text fw={600} className="text-center">
-            {t('Welcome to Chatbox!')}
+            {t('Welcome to KOD!')}
           </Text>
 
           <Text size="xs" c="chatbox-tertiary" className="text-center">
@@ -173,7 +173,7 @@ export function ChatboxWelcomeCard(props: { mode: HomeWelcomeCardMode; pageName:
                   navigateToSettings('chatbox-ai')
                 }}
               >
-                {t('Login Chatbox AI')}
+                {t('Login KOD AI')}
               </Button>
               <Button
                 size="xs"

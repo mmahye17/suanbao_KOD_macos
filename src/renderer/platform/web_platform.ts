@@ -23,6 +23,8 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   private imageGenerationStorage: ImageGenerationStorage | null = null
   private taskSessionStorage: TaskSessionStorage | null = null
   private sessionMetaStorage: SessionMetaStorage | null = null
+  private currentAccountKey: string | null = null
+  private currentImageGenAccountKey: string | null = null
 
   constructor() {
     super()
@@ -192,23 +194,29 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     throw new Error('Session attachment RAG is not implemented on web.')
   }
 
-  public getImageGenerationStorage(): ImageGenerationStorage {
-    if (!this.imageGenerationStorage) {
-      this.imageGenerationStorage = new IndexedDBImageGenerationStorage()
+  public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {
+    const key = accountKey ?? null
+    if (key !== this.currentImageGenAccountKey || !this.imageGenerationStorage) {
+      this.currentImageGenAccountKey = key
+      this.imageGenerationStorage = new IndexedDBImageGenerationStorage(accountKey)
     }
     return this.imageGenerationStorage
   }
 
-  public getTaskSessionStorage(): TaskSessionStorage {
-    if (!this.taskSessionStorage) {
-      this.taskSessionStorage = new IndexedDBTaskSessionStorage()
+  public getTaskSessionStorage(accountKey?: string): TaskSessionStorage {
+    const key = accountKey ?? null
+    if (key !== this.currentAccountKey || !this.taskSessionStorage) {
+      this.currentAccountKey = key
+      this.taskSessionStorage = new IndexedDBTaskSessionStorage(accountKey)
     }
     return this.taskSessionStorage
   }
 
-  public getSessionMetaStorage(): SessionMetaStorage {
-    if (!this.sessionMetaStorage) {
-      this.sessionMetaStorage = new IndexedDBSessionMetaStorage()
+  public getSessionMetaStorage(accountKey?: string): SessionMetaStorage {
+    const key = accountKey ?? null
+    if (key !== this.currentAccountKey || !this.sessionMetaStorage) {
+      this.currentAccountKey = key
+      this.sessionMetaStorage = new IndexedDBSessionMetaStorage(accountKey)
     }
     return this.sessionMetaStorage
   }

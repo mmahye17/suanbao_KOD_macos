@@ -5,7 +5,9 @@ import { createStore, useStore } from 'zustand'
 import { getLogger } from '@/lib/utils'
 import platform from '@/platform'
 import blobStorage from '@/storage'
+import { deriveAccountKey } from '@/storage/accountKey'
 import type { ImageGenerationStorage } from '@/storage/ImageGenerationStorage'
+import { authInfoStore } from '@/stores/authInfoStore'
 
 const log = getLogger('image-generation-store')
 
@@ -32,12 +34,26 @@ export const imageGenerationStore = createStore<ImageGenerationUIState & ImageGe
 }))
 
 let storage: ImageGenerationStorage | null = null
+let _currentImageGenAccountKey: string | null = null
+
+function getAccountKeyForStorage(): string | undefined {
+  const email = authInfoStore.getState().loginEmail
+  return email ? deriveAccountKey(email) : undefined
+}
 
 function getStorage(): ImageGenerationStorage {
-  if (!storage) {
-    storage = platform.getImageGenerationStorage()
+  const accountKey = getAccountKeyForStorage() ?? null
+  if (accountKey !== _currentImageGenAccountKey || !storage) {
+    _currentImageGenAccountKey = accountKey
+    storage = platform.getImageGenerationStorage(accountKey ?? undefined)
   }
   return storage
+}
+
+/** Reset image generation storage singleton — call when account changes. */
+export function resetImageGenerationStorage() {
+  storage = null
+  _currentImageGenAccountKey = null
 }
 
 async function initializeStore(): Promise<void> {

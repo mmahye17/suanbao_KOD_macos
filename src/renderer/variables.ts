@@ -19,4 +19,7 @@ export const USE_NEWDB_API = process.env.USE_NEWDB_API || ''
 export const USE_LOCAL_CHATBOX = process.env.USE_LOCAL_CHATBOX || ''
 export const USE_BETA_CHATBOX = process.env.USE_BETA_CHATBOX || ''
 
+// Kod Portal backend
+export const KOD_API_ORIGIN = process.env.KOD_API_ORIGIN || 'https://kod.kai.com'
+
 export const NODE_ENV = process.env.NODE_ENV || 'development'

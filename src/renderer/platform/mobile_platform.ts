@@ -30,6 +30,8 @@ export default class MobilePlatform extends MobileSQLiteStorage implements Platf
   private _imageGenerationStorage: ImageGenerationStorage | null = null
   private _taskSessionStorage: TaskSessionStorage | null = null
   private _sessionMetaStorage: SessionMetaStorage | null = null
+  private _currentAccountKey: string | null = null
+  private _currentImageGenAccountKey: string | null = null
 
   constructor() {
     super()
@@ -281,23 +283,29 @@ export default class MobilePlatform extends MobileSQLiteStorage implements Platf
     throw new Error('Session attachment RAG is not implemented on mobile.')
   }
 
-  public getImageGenerationStorage(): ImageGenerationStorage {
-    if (!this._imageGenerationStorage) {
-      this._imageGenerationStorage = new SQLiteImageGenerationStorage()
+  public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {
+    const key = accountKey ?? null
+    if (key !== this._currentImageGenAccountKey || !this._imageGenerationStorage) {
+      this._currentImageGenAccountKey = key
+      this._imageGenerationStorage = new SQLiteImageGenerationStorage(accountKey)
     }
     return this._imageGenerationStorage
   }
 
-  public getTaskSessionStorage(): TaskSessionStorage {
-    if (!this._taskSessionStorage) {
-      this._taskSessionStorage = new IndexedDBTaskSessionStorage()
+  public getTaskSessionStorage(accountKey?: string): TaskSessionStorage {
+    const key = accountKey ?? null
+    if (key !== this._currentAccountKey || !this._taskSessionStorage) {
+      this._currentAccountKey = key
+      this._taskSessionStorage = new IndexedDBTaskSessionStorage(accountKey)
     }
     return this._taskSessionStorage
   }
 
-  public getSessionMetaStorage(): SessionMetaStorage {
-    if (!this._sessionMetaStorage) {
-      this._sessionMetaStorage = new SQLiteSessionMetaStorage()
+  public getSessionMetaStorage(accountKey?: string): SessionMetaStorage {
+    const key = accountKey ?? null
+    if (key !== this._currentAccountKey || !this._sessionMetaStorage) {
+      this._currentAccountKey = key
+      this._sessionMetaStorage = new SQLiteSessionMetaStorage(accountKey)
     }
     return this._sessionMetaStorage
   }

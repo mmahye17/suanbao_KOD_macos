@@ -160,7 +160,7 @@ export default function Sidebar() {
             <Flex align="center" gap="sm" onClick={() => navigate({ to: '/about' })} style={{ cursor: 'pointer' }}>
               <Image src={icon} w={20} h={20} />
               <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
-                kod
+                KOD
               </Text>
               {/\d/.test(versionHook.version) && (
                 <Text span c="chatbox-tertiary" size="sm">

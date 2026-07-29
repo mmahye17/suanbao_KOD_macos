@@ -27,7 +27,7 @@ export const LoginView = forwardRef<HTMLDivElement, LoginViewProps>(({ language,
       if (settings.licenseKey && settings.licenseActivationMethod === 'manual') {
         await premiumActions.deactivate(false) // false = 不清除 login tokens
       }
-      await saveAuthTokens(tokens)
+      await saveAuthTokens({ ...tokens, email: tokens.email })
     },
     [saveAuthTokens]
   )
@@ -42,7 +42,7 @@ export const LoginView = forwardRef<HTMLDivElement, LoginViewProps>(({ language,
         </Flex>
         <Stack gap="0">
           <Title order={3} c="chatbox-primary">
-            {t('Login to Chatbox AI')}
+            {t('Login to KOD AI')}
           </Title>
           <Text c="chatbox-tertiary">
             {t('Login requires email and password. Invitation code is required for first login.')}
@@ -61,7 +61,7 @@ export const LoginView = forwardRef<HTMLDivElement, LoginViewProps>(({ language,
                 setLoginModalOpened(true)
               }}
             >
-              {t('Login to Chatbox AI')}
+              {t('Login to KOD AI')}
             </Button>
             <Text c="chatbox-tertiary">
               {t('By continuing, you agree to our')}{' '}
@@ -87,7 +87,7 @@ export const LoginView = forwardRef<HTMLDivElement, LoginViewProps>(({ language,
       <Paper shadow="xs" p="sm" withBorder>
         <Stack gap="sm">
           <Text fw="600" c="chatbox-brand">
-            {t('Chatbox AI offers a user-friendly AI solution to help you enhance productivity')}
+            {t('KOD AI offers a user-friendly AI solution to help you enhance productivity')}
           </Text>
           <Stack>
             {[

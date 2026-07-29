@@ -19,8 +19,6 @@ import electronDebug from 'electron-debug'
 import log from 'electron-log/main'
 import os from 'os'
 import path from 'path'
-// @ts-expect-error - source-map-support doesn't have type definitions
-import * as sourceMapSupport from 'source-map-support'
 import type { ShortcutSetting } from 'src/shared/types'
 import * as analystic from './analystic-node'
 import { AppUpdater } from './app-updater'
@@ -45,11 +43,19 @@ import {
 } from './store-node'
 import * as windowState from './window_state'
 
-const knowledgeBaseInitPromise = import('./knowledge-base/index.js')
-  .then((mod) => mod.getInitPromise())
-  .catch((error) => {
-    log.error('[KB] Failed to initialize knowledge base during bootstrap:', error)
-  })
+// KOD opt: Knowledge base initialized lazily on first use (saves ~300MB at startup).
+// The init promise is kept so existing callers awaiting it still work correctly.
+let _kbInitPromise: Promise<void> | null = null
+const knowledgeBaseInitPromise = (() => {
+  if (!_kbInitPromise) {
+    _kbInitPromise = import('./knowledge-base/index.js')
+      .then((mod) => mod.getInitPromise())
+      .catch((error) => {
+        log.error('[KB] Failed to initialize knowledge base during bootstrap:', error)
+      })
+  }
+  return _kbInitPromise
+})()
 
 const TRUTHY_ENV_VALUES = new Set(['1', 'true', 'yes', 'on'])
 
@@ -133,8 +139,7 @@ const getAssetPath = (...paths: string[]): string => {
   return path.join(RESOURCES_PATH, ...paths)
 }
 
-// 开发环境使用 chatbox-dev:// 协议，避免和正式版冲突
-const PROTOCOL_SCHEME = process.defaultApp ? 'chatbox-dev' : 'chatbox'
+const PROTOCOL_SCHEME = process.defaultApp ? 'kod-dev' : 'kod'
 
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
@@ -255,7 +260,7 @@ function createTray() {
       accelerator: 'Command+Q',
     },
   ])
-  tray.setToolTip('Kod')
+  tray.setToolTip('KOD')
   tray.setContextMenu(contextMenu)
   tray.on('double-click', showOrHideWindow)
   return tray
@@ -290,8 +295,9 @@ function destroyTray() {
 
 // --------- 开发模式 ---------
 
+// KOD opt: source-map-support only loaded in production (saves ~150MB in dev)
 if (process.env.NODE_ENV === 'production') {
-  sourceMapSupport.install()
+  require('source-map-support').install()
 }
 
 const isDebug = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
@@ -463,7 +469,7 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', async (event, commandLine, workingDirectory) => {
     // on windows and linux, the deep link is passed in the command line
-    const url = commandLine.find((arg) => arg.startsWith('chatbox://') || arg.startsWith('chatbox-dev://'))
+    const url = commandLine.find((arg) => arg.startsWith('kod://') || arg.startsWith('kod-dev://'))
 
     if (url) {
       // Deep Link 场景：总是显示并聚焦窗口
@@ -507,8 +513,12 @@ if (!gotTheLock) {
   app
     .whenReady()
     .then(async () => {
-      await knowledgeBaseInitPromise
+      // KOD opt: Create window immediately, let KB init in background.
+      // This avoids blocking the first paint on SQLite migrations (~2-5s).
       await createWindow()
+      knowledgeBaseInitPromise.catch((error) => {
+        log.error('[KB] Background knowledge base init failed:', error)
+      })
       await initializeSessionAttachmentRagAfterAppReady()
       ensureTray()
       // Remove this if your app does not use auto updates

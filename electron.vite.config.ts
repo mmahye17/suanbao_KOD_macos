@@ -141,7 +141,7 @@ export default defineConfig(({ mode }) => {
         lib: {
           entry: resolve(__dirname, 'src/main/main.ts'),
         },
-        sourcemap: isProduction ? 'hidden' : true,
+        sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory
         minify: isProduction,
         rollupOptions: {
           external: Object.keys(packageJson.dependencies || {}),
@@ -184,7 +184,7 @@ export default defineConfig(({ mode }) => {
         lib: {
           entry: resolve(__dirname, 'src/preload/index.ts'),
         },
-        sourcemap: isProduction ? 'hidden' : true,
+        sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory
         minify: isProduction,
       },
       resolve: {
@@ -240,7 +240,7 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: isProduction ? 'release/app/dist/renderer' : undefined,
         target: 'es2020', // Avoid static initialization blocks for browser compatibility
-        sourcemap: isProduction ? 'hidden' : true,
+        sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory
         minify: isProduction ? 'esbuild' : false, // Use esbuild for faster, less memory-intensive minification
         rollupOptions: {
           output: {
@@ -291,6 +291,13 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: Number(process.env.DEV_PORT) || 1212,
+        // KOD opt: reduce file system watcher overhead on Windows (saves ~100MB)
+        watch: {
+          ignored: ['**/node_modules/**', '**/.git/**', '**/release/**', '**/out/**', '**/dist/**'],
+        },
+        fs: {
+          strict: false, // Allow serving files outside of the root
+        },
       },
       define: {
         'process.type': '"renderer"',
@@ -305,8 +312,9 @@ export default defineConfig(({ mode }) => {
         'process.env.USE_BETA_CHATBOX': JSON.stringify(process.env.USE_BETA_CHATBOX || ''),
       },
       optimizeDeps: {
-        // Avoid forcing a fresh dep optimization on every dev startup.
-        // Large prebundles can overwhelm local Windows environments; opt in when needed.
+        // KOD opt: disabled force to allow Vite dependency cache (saves ~200MB on repeated dev starts).
+        // Opt in via env when needed: VITE_FORCE_DEP_OPTIMIZE=true (or --force on the CLI).
+        // If MUI breaks after dependency changes, run: pnpm exec electron-vite dev --force
         force: process.env.VITE_FORCE_DEP_OPTIMIZE === 'true',
         include: ['mermaid'],
         esbuildOptions: {

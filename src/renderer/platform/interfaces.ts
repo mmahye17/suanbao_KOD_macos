@@ -101,11 +101,11 @@ export interface Platform extends Storage {
   getKnowledgeBaseController(): KnowledgeBaseController
   getSessionAttachmentRagController(): SessionAttachmentRagController
 
-  getImageGenerationStorage(): ImageGenerationStorage
+  getImageGenerationStorage(accountKey?: string): ImageGenerationStorage
 
-  getTaskSessionStorage(): TaskSessionStorage
+  getTaskSessionStorage(accountKey?: string): TaskSessionStorage
 
-  getSessionMetaStorage(): SessionMetaStorage
+  getSessionMetaStorage(accountKey?: string): SessionMetaStorage
 
   // Sandbox operations (Desktop only)
   sandboxInit?(config: { workingDirectory: string }): Promise<{ success: boolean; error?: string }>

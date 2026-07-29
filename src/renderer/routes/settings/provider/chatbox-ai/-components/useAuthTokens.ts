@@ -16,7 +16,10 @@ export function useAuthTokens() {
 
   const saveAuthTokens = useCallback(async (tokens: AuthTokens) => {
     try {
-      await authInfoStore.getState().setTokens(tokens)
+      await authInfoStore.getState().setTokens({
+        ...tokens,
+        email: tokens.email,
+      })
     } catch (error) {
       console.error('❌ Failed to save tokens:', error)
       throw error
@@ -25,6 +28,16 @@ export function useAuthTokens() {
 
   const clearAuthTokens = useCallback(async () => {
     try {
+      // Purge local data for the current account BEFORE clearing tokens
+      // (needs loginEmail to identify the correct account database)
+      try {
+        const { purgeCurrentAccountData } = await import('@/stores/chatStore')
+        await purgeCurrentAccountData()
+      } catch (e) {
+        console.error('Failed to purge account data on logout:', e)
+        // Continue with logout even if purge fails
+      }
+
       const settings = settingsStore.getState()
       if (settings.licenseActivationMethod === 'login') {
         await premiumActions.deactivate()
@@ -45,6 +58,18 @@ export function useAuthTokens() {
       }))
 
       authInfoStore.getState().clearTokens()
+
+      // Reset all account-isolated storage singletons so next login uses fresh DB instances
+      const { resetMetaStorage } = await import('@/stores/chatStore')
+      resetMetaStorage()
+
+      const { resetTaskSessionStorage } = await import('@/stores/taskSessionStore')
+      resetTaskSessionStorage()
+
+      const { resetImageGenerationStorage } = await import('@/stores/imageGenerationStore')
+      resetImageGenerationStorage()
+
+      queryClient.clear()
 
       queryClient.removeQueries({ queryKey: ['userProfile'] })
       queryClient.removeQueries({ queryKey: ['userLicenses'] })

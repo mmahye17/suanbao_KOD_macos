@@ -134,12 +134,44 @@ function BackgroundImageOverlay() {
   )
 }
 
+// 修复 Mantine Modal 导致的 "Blocked aria-hidden on an element because its descendant retained focus" 警告
+// W3C 推荐使用 inert 替代 aria-hidden，因为 inert 同时阻止焦点和无障碍读取
+function useInertFallback() {
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+          const el = mutation.target as HTMLElement
+          if (el.getAttribute('aria-hidden') === 'true') {
+            el.setAttribute('inert', '')
+          } else {
+            el.removeAttribute('inert')
+          }
+        }
+      }
+    })
+
+    const root = document.getElementById('root')
+    if (root) {
+      observer.observe(root, { attributes: true, attributeFilter: ['aria-hidden'], subtree: true })
+    }
+
+    // 同时观察所有已存在的 portal 容器
+    document.querySelectorAll('[data-portal]').forEach((el) => {
+      observer.observe(el, { attributes: true, attributeFilter: ['aria-hidden'] })
+    })
+
+    return () => observer.disconnect()
+  }, [])
+}
+
 function Root() {
   const { isExceeded, isExceededResolved } = useVersion()
   const location = useLocation()
   const spellCheck = useSettingsStore((state) => state.spellCheck)
   const language = useLanguage()
   const initialized = useRef(false)
+  useInertFallback()
 
   const setOpenAboutDialog = useUIStore((s) => s.setOpenAboutDialog)
 

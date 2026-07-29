@@ -3,12 +3,13 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/components/layout/Overlay'
 import { loginWithKod } from '@/packages/remote'
+import type { AuthTokens } from './types'
 
 interface EmailCodeLoginModalProps {
   opened: boolean
   onClose: () => void
   language: string
-  onLoginSuccess: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>
+  onLoginSuccess: (tokens: AuthTokens) => Promise<void>
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -61,7 +62,7 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
         password,
         inviteCode: isFirstLogin ? invitationCode.trim() : undefined,
       })
-      await onLoginSuccess(tokens)
+      await onLoginSuccess({ ...tokens, email: email.trim() })
       handleClose()
     } catch (error) {
       setError(getErrorMessage(error, t('Login failed') || 'Login failed'))
@@ -76,7 +77,7 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
       onClose={handleClose}
       centered
       size="md"
-      title={t('Login to Chatbox AI')}
+      title={t('Login to KOD AI')}
       closeOnClickOutside={false}
       closeOnEscape={false}
     >
@@ -158,7 +159,7 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
             {t('Cancel')}
           </Button>
           <Button onClick={() => void handleSubmit()} loading={isSubmitting}>
-            {t('Login to Chatbox AI')}
+            {t('Login to KOD AI')}
           </Button>
         </Flex>
       </Stack>

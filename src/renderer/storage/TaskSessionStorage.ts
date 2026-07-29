@@ -1,4 +1,5 @@
 import type { TaskSession, TaskSessionPage } from '@shared/types'
+import { getAccountDBName } from './accountKey'
 
 const PAGE_SIZE = 20
 const DB_NAME = 'chatbox-task-session'
@@ -17,6 +18,11 @@ export interface TaskSessionStorage {
 export class IndexedDBTaskSessionStorage implements TaskSessionStorage {
   private db: IDBDatabase | null = null
   private initPromise: Promise<void> | null = null
+  private accountKey: string | undefined
+
+  constructor(accountKey?: string) {
+    this.accountKey = accountKey
+  }
 
   initialize(): Promise<void> {
     if (this.initPromise) {
@@ -28,7 +34,8 @@ export class IndexedDBTaskSessionStorage implements TaskSessionStorage {
 
   private openDatabase(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1)
+      const dbName = getAccountDBName(DB_NAME, this.accountKey)
+      const request = indexedDB.open(dbName, 1)
 
       request.onerror = () => reject(request.error)
 
