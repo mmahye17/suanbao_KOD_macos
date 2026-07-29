@@ -1,4 +1,4 @@
-import { type RemoteConfig, Theme } from '@shared/types'
+import { Theme } from '@shared/types'
 import { z } from 'zod'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import Toasts from '@/components/common/Toasts'
@@ -44,14 +44,13 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
 import { useQuery } from '@tanstack/react-query'
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
 import { trackJkViewEvent } from '@/analytics/jk'
 import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import SettingsModal, { navigateToSettings } from '@/modals/Settings'
 import { prefetchModelRegistry } from '@/packages/model-registry'
 import { getOS } from '@/packages/navigator'
-import * as remote from '@/packages/remote'
 import PictureDialog from '@/pages/PictureDialog'
 import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
 import SearchDialog from '@/pages/SearchDialog'
@@ -175,7 +174,7 @@ function Root() {
 
   const setOpenAboutDialog = useUIStore((s) => s.setOpenAboutDialog)
 
-  const setRemoteConfig = useSetAtom(atoms.remoteConfigAtom)
+  const remoteConfig = useAtomValue(atoms.remoteConfigAtom)
 
   useEffect(() => {
     if (initialized.current) {
@@ -186,11 +185,6 @@ function Root() {
       // Wait for stores to hydrate from persistent storage
       await Promise.all([initSettingsStore(), initOnboardingStore()])
       void prefetchModelRegistry()
-
-      const remoteConfig = await remote
-        .getRemoteConfig('setting_chatboxai_first')
-        .catch(() => ({ setting_chatboxai_first: false }) as RemoteConfig)
-      setRemoteConfig(async (prev) => ({ ...(await prev), ...remoteConfig }))
 
       // Skip guide-related checks if already on guide or settings/mcp page
       if (location.pathname === '/guide' || location.pathname === '/settings/mcp') {
@@ -230,7 +224,7 @@ function Root() {
         return
       }
     })()
-  }, [setOpenAboutDialog, setRemoteConfig, location.pathname, isExceeded, isExceededResolved])
+  }, [setOpenAboutDialog, remoteConfig, location.pathname, isExceeded, isExceededResolved])
 
   const showSidebar = useUIStore((s) => s.showSidebar)
   const sidebarWidth = useSidebarWidth()
