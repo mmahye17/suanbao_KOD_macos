@@ -33,6 +33,7 @@ import { RouteComponent as SettingsProviderIndexRouteComponent } from '@/routes/
 import { RouteComponent as SettingsProviderRouteRouteComponent } from '@/routes/settings/provider/route'
 import { SettingsRoot } from '@/routes/settings/route'
 import { RouteComponent as SettingsSkillsRouteComponent } from '@/routes/settings/skills'
+import { RouteComponent as SettingsSuanbaoRouteComponent } from '@/routes/settings/suanbao'
 import { RouteComponent as SettingsWebSearchRouteComponent } from '@/routes/settings/web-search'
 
 export type SettingsModalProps = {}
@@ -181,6 +182,12 @@ const SettingsSkillsRoute = createRoute({
   getParentRoute: () => RootRoute,
 })
 
+const SettingsSuanbaoRoute = createRoute({
+  component: SettingsSuanbaoRouteComponent,
+  path: '/settings/suanbao',
+  getParentRoute: () => RootRoute,
+})
+
 const SettingsKnowledgeBaseRoute = createRoute({
   component: SettingsKnowledgeBaseRouteComponent,
   path: '/settings/knowledge-base',
@@ -243,6 +250,7 @@ const routeTree = RootRoute.addChildren([
   SettingsWebSearchRoute,
   SettingsMcpRoute,
   SettingsSkillsRoute,
+  SettingsSuanbaoRoute,
   SettingsKnowledgeBaseRoute,
   SettingsDocumentParserRoute,
   SettingsHotkeysRoute,

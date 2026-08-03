@@ -11,6 +11,7 @@ import {
   IconInfoCircle,
   IconKeyboard,
   IconMessages,
+  IconPlant,
   IconSparkles,
   IconWand,
   IconWorldWww,
@@ -94,6 +95,11 @@ const ITEMS = [
           icon: <IconKeyboard className="w-full h-full" />,
         },
       ]),
+  {
+    key: 'suanbao',
+    label: 'Suanbao',
+    icon: <IconPlant className="w-full h-full" />,
+  },
   {
     key: 'general',
     label: 'General Settings',
