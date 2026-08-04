@@ -48,6 +48,7 @@ export const suanbaoOperationPresentationSchema = z
   .object({
     operationId: suanbaoOperationIdSchema,
     phase: z.enum(['awaiting-confirmation', 'running', 'succeeded', 'failed', 'cancelled']),
+    kind: z.enum(['todo', 'reminder', 'pomodoro', 'local-calendar-event', 'reminder-delivery']).optional(),
     title: z.string().trim().min(1).max(160).optional(),
     fields: z
       .array(z.object({ label: z.string().max(80), value: z.string().max(240) }).strict())

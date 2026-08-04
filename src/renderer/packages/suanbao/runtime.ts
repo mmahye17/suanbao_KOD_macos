@@ -82,9 +82,12 @@ const confirmationFromOperation = (operation: SuanbaoOperation): SuanbaoConfirma
 const presentationFromConfirmation = (confirmation: SuanbaoConfirmation): SuanbaoOperationPresentation => ({
   operationId: confirmation.operationId,
   phase: 'awaiting-confirmation',
+  kind: confirmation.kind,
   title: confirmation.title,
   fields: confirmation.fields,
 })
+
+const TERMINAL_OPERATION_DURATION = 1_800
 
 export class SuanbaoRuntime {
   private service: SuanbaoAssistantService | null = null
@@ -93,6 +96,7 @@ export class SuanbaoRuntime {
   private generation = 0
   private revision = 0
   private wakeTimer: ReturnType<typeof setTimeout> | undefined
+  private terminalTimer: ReturnType<typeof setTimeout> | undefined
   private readonly listeners = new Set<RuntimeListener>()
   private snapshot: SuanbaoRuntimeSnapshot = { accountKey: '', revision: 0, initialized: false }
 
@@ -117,6 +121,7 @@ export class SuanbaoRuntime {
     const oldService = this.service
     const oldRepository = this.repository
     this.clearWakeTimer()
+    this.clearTerminalTimer()
     this.service = null
     this.repository = null
     this.accountKey = accountKey
@@ -136,13 +141,16 @@ export class SuanbaoRuntime {
     const scheduler = new SuanbaoReminderScheduler(repository, {
       deliver: (reminder) => {
         if (generation !== this.generation || accountKey !== this.accountKey) return
-        this.publish({
-          operation: {
-            operationId: reminder.id,
-            phase: 'succeeded',
-            message: `提醒：${reminder.title}`,
-          },
+        this.publishTerminal({
+          operationId: reminder.id,
+          phase: 'succeeded',
+          kind: 'reminder-delivery',
+          message: `提醒：${reminder.title}`,
         })
+      },
+      onError: (reason) => {
+        if (generation !== this.generation || accountKey !== this.accountKey) return
+        this.publish({ errorCode: reason instanceof Error ? reason.message : 'SUANBAO_REMINDER_RECONCILE_FAILED' })
       },
     })
     const service = new SuanbaoAssistantService(repository, scheduler)
@@ -176,46 +184,70 @@ export class SuanbaoRuntime {
     ])
     if (generation !== this.generation || service !== this.service) return
     const confirmation = operation ? confirmationFromOperation(operation) : null
+    const currentOperation = this.snapshot.operation
+    const terminalOperation =
+      currentOperation && currentOperation.phase !== 'awaiting-confirmation' ? currentOperation : undefined
     this.publish({
       initialized: true,
       activePomodoro: activePomodoro ?? undefined,
       errorCode: undefined,
-      operation: confirmation ? presentationFromConfirmation(confirmation) : undefined,
+      operation: confirmation ? presentationFromConfirmation(confirmation) : terminalOperation,
     })
     this.scheduleWake(activePomodoro ?? undefined)
   }
 
   async prepare(confirmation: SuanbaoConfirmation) {
     const service = this.requireService()
+    const generation = this.generation
+    this.clearTerminalTimer()
     await service.prepareConfirmation(confirmation)
+    if (!this.isCurrent(service, generation)) return confirmation
     this.publish({ operation: presentationFromConfirmation(confirmation) })
     return confirmation
   }
 
   async confirm(operationId: string): Promise<SuanbaoExecutionResult> {
     const service = this.requireService()
-    this.publish({ operation: { operationId, phase: 'running' } })
+    const generation = this.generation
+    const kind = this.snapshot.operation?.operationId === operationId ? this.snapshot.operation.kind : undefined
+    this.clearTerminalTimer()
+    this.publish({ operation: { operationId, phase: 'running', kind } })
     try {
       const result = await service.confirm(operationId)
-      this.publish({ operation: { operationId, phase: 'succeeded', message: result.message } })
+      if (!this.isCurrent(service, generation)) return result
+      this.publishTerminal({ operationId, phase: 'succeeded', kind, message: result.message })
       await this.reconcile()
       return result
     } catch (reason) {
-      const errorCode = reason instanceof Error ? reason.message : 'SUANBAO_EXECUTION_FAILED'
-      this.publish({ operation: { operationId, phase: 'failed', errorCode } })
+      if (this.isCurrent(service, generation)) {
+        const errorCode = reason instanceof Error ? reason.message : 'SUANBAO_EXECUTION_FAILED'
+        this.publishTerminal({ operationId, phase: 'failed', kind, errorCode })
+      }
       throw reason
     }
   }
 
   async cancel(operationId: string) {
-    const operation = await this.requireService().cancelConfirmation(operationId)
-    this.publish({ operation: { operationId, phase: 'cancelled' } })
-    return operation
+    const service = this.requireService()
+    const generation = this.generation
+    const kind = this.snapshot.operation?.operationId === operationId ? this.snapshot.operation.kind : undefined
+    try {
+      const operation = await service.cancelConfirmation(operationId)
+      if (this.isCurrent(service, generation)) this.publishTerminal({ operationId, phase: 'cancelled', kind })
+      return operation
+    } catch (reason) {
+      if (this.isCurrent(service, generation)) {
+        const errorCode = reason instanceof Error ? reason.message : 'SUANBAO_EXECUTION_FAILED'
+        this.publishTerminal({ operationId, phase: 'failed', kind, errorCode })
+      }
+      throw reason
+    }
   }
 
   async close() {
     ++this.generation
     this.clearWakeTimer()
+    this.clearTerminalTimer()
     const service = this.service
     const repository = this.repository
     const accountKey = this.accountKey
@@ -234,16 +266,40 @@ export class SuanbaoRuntime {
   }
 
   private requireService() {
-    if (!this.service) throw new Error('SUANBAO_RUNTIME_NOT_READY')
+    if (!this.service || !this.snapshot.initialized) throw new Error('SUANBAO_RUNTIME_NOT_READY')
     return this.service
+  }
+
+  private isCurrent(service: SuanbaoAssistantService, generation: number) {
+    return service === this.service && generation === this.generation
+  }
+
+  private publishTerminal(operation: SuanbaoOperationPresentation) {
+    this.clearTerminalTimer()
+    const generation = this.generation
+    this.publish({ operation })
+    this.terminalTimer = setTimeout(() => {
+      if (generation !== this.generation || this.snapshot.operation?.operationId !== operation.operationId) return
+      this.publish({ operation: undefined })
+      this.terminalTimer = undefined
+    }, TERMINAL_OPERATION_DURATION)
+  }
+
+  private clearTerminalTimer() {
+    if (this.terminalTimer) clearTimeout(this.terminalTimer)
+    this.terminalTimer = undefined
   }
 
   private scheduleWake(session?: SuanbaoPomodoroSession) {
     this.clearWakeTimer()
     if (session?.status !== 'running' || !session.endsAt) return
     const delay = Math.min(Math.max(session.endsAt - Date.now(), 0), 2_147_000_000)
+    const generation = this.generation
     this.wakeTimer = setTimeout(() => {
-      void this.reconcile().catch(() => undefined)
+      void this.reconcile().catch((reason) => {
+        if (generation !== this.generation) return
+        this.publish({ errorCode: reason instanceof Error ? reason.message : 'SUANBAO_RUNTIME_RECONCILE_FAILED' })
+      })
     }, delay)
   }
 

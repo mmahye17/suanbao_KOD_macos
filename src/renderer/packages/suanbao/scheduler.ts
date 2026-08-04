@@ -5,6 +5,7 @@ const MAX_TIMER_DELAY = 2_147_000_000
 
 export interface SuanbaoReminderDelivery {
   deliver(reminder: SuanbaoReminder): Promise<void> | void
+  onError?(reason: unknown): void
 }
 
 export const silentReminderDelivery: SuanbaoReminderDelivery = {
@@ -23,9 +24,9 @@ export class SuanbaoReminderScheduler {
   private reconciling: Promise<void> | null = null
   private started = false
   private readonly onVisibilityChange = () => {
-    if (typeof document === 'undefined' || document.visibilityState === 'visible') void this.reconcile()
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') this.reconcileInBackground()
   }
-  private readonly onFocus = () => void this.reconcile()
+  private readonly onFocus = () => this.reconcileInBackground()
 
   constructor(
     private readonly repository: SuanbaoRepository,
@@ -80,6 +81,10 @@ export class SuanbaoReminderScheduler {
     const next = (await this.repository.listScheduledReminders())[0]
     if (!next || !this.started) return
     const delay = Math.min(MAX_TIMER_DELAY, Math.max(0, next.triggerAt - this.now()))
-    this.timer = setTimeout(() => void this.reconcile(), delay)
+    this.timer = setTimeout(() => this.reconcileInBackground(), delay)
+  }
+
+  private reconcileInBackground() {
+    void this.reconcile().catch((reason) => this.delivery.onError?.(reason))
   }
 }

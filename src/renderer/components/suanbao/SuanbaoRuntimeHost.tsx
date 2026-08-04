@@ -1,6 +1,7 @@
 import type {
   SuanbaoBootstrap,
   SuanbaoHostRequest,
+  SuanbaoPetState,
   SuanbaoPlatformCapabilities,
   SuanbaoViewModel,
 } from '@shared/types/suanbao'
@@ -34,7 +35,7 @@ async function waitForRetry(delayMs: number): Promise<void> {
   if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
 }
 
-const STATUS_COPY: Record<SuanbaoViewModel['petState'], string> = {
+const STATUS_COPY: Record<SuanbaoPetState, string> = {
   idle: '蒜宝已就绪',
   listening: '我在听',
   thinking: '蒜宝正在思考',
@@ -45,6 +46,21 @@ const STATUS_COPY: Record<SuanbaoViewModel['petState'], string> = {
   focus: '专注中',
   rest: '休息一下吧',
   sleeping: '蒜宝正在休息',
+}
+
+const resolvePetState = (
+  chatState: SuanbaoPetState,
+  runtimeSnapshot: ReturnType<typeof suanbaoRuntime.getSnapshot>
+): SuanbaoPetState => {
+  const operation = runtimeSnapshot.operation
+  if (operation?.phase === 'failed') return 'error'
+  if (operation?.phase === 'running') return 'executing'
+  if (operation?.kind === 'reminder-delivery') return 'reminding'
+  if (operation?.phase === 'succeeded') return 'success'
+  if (runtimeSnapshot.activePomodoro) {
+    return runtimeSnapshot.activePomodoro.phase === 'work' ? 'focus' : 'rest'
+  }
+  return chatState
 }
 
 /** Keeps the isolated Electron window synchronized with the main renderer business state. */
@@ -67,13 +83,15 @@ export function SuanbaoRuntimeHost() {
   const { session } = useSession(chatSessionId)
   const { data: taskSession } = useTaskSessionRecord(taskId)
   const messages = location.pathname.startsWith('/task') ? taskSession?.messages : session?.messages
-  const petState = mapMessagesToSuanbaoState(messages)
+  const chatPetState = mapMessagesToSuanbaoState(messages)
+  const petState = resolvePetState(chatPetState, runtimeSnapshot)
   const [bubbleOpen, setBubbleOpen] = useState(false)
   const [capabilities, setCapabilities] = useState<SuanbaoPlatformCapabilities>(IN_APP_CAPABILITIES)
 
   useEffect(() => {
-    void suanbaoRuntime.switchAccount(accountKey)
-    const reconcile = () => void suanbaoRuntime.reconcile()
+    const handleError = () => undefined
+    void suanbaoRuntime.switchAccount(accountKey).catch(handleError)
+    const reconcile = () => void suanbaoRuntime.reconcile().catch(handleError)
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') reconcile()
     }
@@ -143,7 +161,7 @@ export function SuanbaoRuntimeHost() {
       message: runtimeSnapshot.operation?.message || STATUS_COPY[petState],
       operationId: runtimeSnapshot.operation?.operationId,
       operation: runtimeSnapshot.operation,
-      connection: runtimeSnapshot.initialized ? 'online' : 'connecting',
+      connection: runtimeSnapshot.initialized ? 'online' : runtimeSnapshot.errorCode ? 'offline' : 'connecting',
       updatedAt,
     }
   }, [bubbleOpen, petState, runtimeSnapshot])
@@ -168,11 +186,11 @@ export function SuanbaoRuntimeHost() {
 
   const onCommand = useCallback((request: SuanbaoHostRequest) => {
     if (request.kind === 'confirm-operation') {
-      void suanbaoRuntime.confirm(request.operationId)
+      void suanbaoRuntime.confirm(request.operationId).catch(() => undefined)
       return
     }
     if (request.kind === 'cancel-operation') {
-      void suanbaoRuntime.cancel(request.operationId)
+      void suanbaoRuntime.cancel(request.operationId).catch(() => undefined)
       return
     }
 
