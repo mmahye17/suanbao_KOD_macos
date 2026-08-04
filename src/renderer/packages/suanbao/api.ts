@@ -18,13 +18,20 @@ export function stringifyProps(props: Record<string, string | number | boolean>)
 }
 
 /**
+ * 蒜宝埋点事件词汇表（arch §15.3，受控枚举）。pet 交互 UI 落地后补充 pet_show/pet_hide/
+ * pet_interact/reminder_fired/reminder_dismissed 等事件；新增事件须先小组评审
+ * （任务书「埋点口径」——与姚铭洲/王腾核对）。当前仅含数据层已使用的事件。
+ */
+export const SUANBAO_TRACKED_EVENTS = ['data_cleared'] as const
+export type SuanbaoEventName = (typeof SUANBAO_TRACKED_EVENTS)[number]
+
+/**
  * 蒜宝埋点统一入口。门控：全局开关 allowReportingAndTracking === false 时不上报
  * （arch §15.3「继续遵循应用统计同意开关」；A 区偏好无单独的 per-suanbao 埋点开关）。
  * 数据最小化：props 仅含标量（动作ID/平台/错误码/耗时/入口），
  * 不含 prompt、消息正文、文件内容、经纬度、城市、待办/提醒/日程标题、日历详情、文件路径、会议链接。
- * TODO(埋点阶段): 按 arch §15.3 定义事件词汇表（受控 name 枚举），本轮 name 暂为 string 占位。
  */
-export async function trackSuanbao(name: string, props: Record<string, string | number | boolean>): Promise<void> {
+export async function trackSuanbao(name: SuanbaoEventName, props: Record<string, string | number | boolean>): Promise<void> {
   const settings = await platform.getSettings()
   if (settings.allowReportingAndTracking === false) return
   platform.trackingEvent(name, stringifyProps(props))
