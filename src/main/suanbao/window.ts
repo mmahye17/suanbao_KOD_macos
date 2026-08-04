@@ -5,7 +5,8 @@ import { BrowserWindow, screen } from 'electron'
 import log from 'electron-log/main'
 import { clampDesktopPlacement, defaultDesktopPlacement, type SuanbaoDisplaySnapshot } from './placement'
 
-const PET_WINDOW_SIZE = { width: 360, height: 420 }
+/** Compact desktop pet; only shown while the main Kod window is hidden. */
+const PET_WINDOW_SIZE = { width: 120, height: 145 }
 const SAVE_DELAY_MS = 150
 
 export interface SuanbaoWindowManagerOptions {
@@ -30,6 +31,7 @@ function getDisplaySnapshots(): SuanbaoDisplaySnapshot[] {
 
 export class SuanbaoWindowManager {
   private petWindow: BrowserWindow | null = null
+  private windowCreation: Promise<BrowserWindow> | null = null
   private enabled = false
   private animation: SuanbaoAnimationLevel = 'off'
   private placement: SuanbaoPlacement
@@ -93,21 +95,37 @@ export class SuanbaoWindowManager {
 
   async setEnabled(enabled: boolean): Promise<void> {
     this.enabled = enabled
-    if (!enabled) {
-      this.hide()
-      return
-    }
-    await this.show()
+    await this.syncFloatingVisibility()
   }
 
+  /** Renderer "show" means sync: floating pet only appears when the main window is not on screen. */
   async show(): Promise<void> {
-    if (!this.enabled) return
-    const window = await this.ensureWindow()
-    if (!window.isVisible()) window.showInactive()
+    await this.syncFloatingVisibility()
   }
 
   hide(): void {
     this.petWindow?.hide()
+  }
+
+  /** Keep the floating pet for tray/minimized mode; the main window renders the in-app pet. */
+  async syncFloatingVisibility(): Promise<void> {
+    if (!this.enabled || !this.shouldShowFloating()) {
+      this.hide()
+      return
+    }
+    const window = await this.ensureWindow()
+    if (!this.enabled || !this.shouldShowFloating()) {
+      window.hide()
+      return
+    }
+    this.restorePlacement()
+    if (!window.isVisible()) window.showInactive()
+  }
+
+  private shouldShowFloating(): boolean {
+    const main = this.options.getMainWindow()
+    if (!main || main.isDestroyed()) return false
+    return !main.isVisible() || main.isMinimized()
   }
 
   async toggleFromTray(): Promise<void> {
@@ -115,8 +133,12 @@ export class SuanbaoWindowManager {
       await this.setEnabled(true)
       return
     }
+    if (!this.shouldShowFloating()) {
+      this.hide()
+      return
+    }
     if (this.isVisible()) this.hide()
-    else await this.show()
+    else await this.syncFloatingVisibility()
   }
 
   setInteractive(interactive: boolean): void {
@@ -163,7 +185,17 @@ export class SuanbaoWindowManager {
 
   private async ensureWindow(): Promise<BrowserWindow> {
     if (this.petWindow && !this.petWindow.isDestroyed()) return this.petWindow
+    if (this.windowCreation) return this.windowCreation
 
+    this.windowCreation = this.createWindow()
+    try {
+      return await this.windowCreation
+    } finally {
+      this.windowCreation = null
+    }
+  }
+
+  private async createWindow(): Promise<BrowserWindow> {
     this.restorePlacement()
     const window = new BrowserWindow({
       width: PET_WINDOW_SIZE.width,
@@ -195,12 +227,25 @@ export class SuanbaoWindowManager {
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     window.webContents.on('will-navigate', (event) => event.preventDefault())
     window.webContents.on('will-attach-webview', (event) => event.preventDefault())
+    window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      log.error('[Suanbao] Pet renderer failed to load.', { errorCode, errorDescription, validatedURL })
+    })
+    window.webContents.on('render-process-gone', (_event, details) => {
+      log.error('[Suanbao] Pet renderer process exited.', details)
+    })
+    window.webContents.on('devtools-opened', () => {
+      window.webContents.closeDevTools()
+    })
     window.on('closed', () => {
       if (this.petWindow === window) this.petWindow = null
     })
     window.on('move', () => this.captureCurrentBounds())
 
     try {
+      log.info('[Suanbao] Loading transparent pet window.', {
+        source: this.options.developmentUrl ?? this.options.productionHtmlPath,
+        placement: this.placement,
+      })
       if (this.options.developmentUrl) await window.loadURL(this.options.developmentUrl)
       else await window.loadFile(this.options.productionHtmlPath)
     } catch (error) {

@@ -32,7 +32,8 @@ export function injectReleaseDate(): Plugin {
   const releaseDate = new Date().toISOString().slice(0, 10)
   return {
     name: 'inject-release-date',
-    transformIndexHtml() {
+    transformIndexHtml(_html, context) {
+      if (context.path.endsWith('/suanbao-window/index.html')) return []
       return [
         {
           tag: 'script',
@@ -70,6 +71,22 @@ export function injectViewportContent(isDesktop: boolean): Plugin {
     name: 'inject-viewport-content',
     transformIndexHtml(html) {
       return html.replace('%VIEWPORT_CONTENT%', content)
+    },
+  }
+}
+
+/** Keep the isolated Suanbao renderer strict in production while allowing Vite HMR in development. */
+export function injectSuanbaoContentSecurityPolicy(isProduction: boolean): Plugin {
+  const productionPolicy =
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+  const developmentPolicy =
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+
+  return {
+    name: 'inject-suanbao-content-security-policy',
+    transformIndexHtml(html, context) {
+      if (!context.path.endsWith('/suanbao-window/index.html')) return html
+      return html.replace('%SUANBAO_CONTENT_SECURITY_POLICY%', isProduction ? productionPolicy : developmentPolicy)
     },
   }
 }
@@ -215,6 +232,7 @@ export default defineConfig(({ mode }) => {
         react({}),
         dvhToVh(),
         injectViewportContent(isDesktop),
+        injectSuanbaoContentSecurityPolicy(isProduction),
         isWeb ? injectBaseTag() : undefined,
         injectReleaseDate(),
         isWeb ? replacePlausibleDomain() : undefined,

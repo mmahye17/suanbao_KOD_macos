@@ -158,6 +158,21 @@ log.info(`📱 URL Scheme registered: ${PROTOCOL_SCHEME}://`)
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let suanbaoModule: SuanbaoDesktopModule | null = null
+const suanbaoBoundMainWindows = new WeakSet<BrowserWindow>()
+
+function syncSuanbaoFloatingVisibility() {
+  void suanbaoModule?.windowManager.syncFloatingVisibility()
+}
+
+function attachSuanbaoMainWindowListeners(win: BrowserWindow) {
+  if (suanbaoBoundMainWindows.has(win)) return
+  suanbaoBoundMainWindows.add(win)
+  win.on('show', syncSuanbaoFloatingVisibility)
+  win.on('hide', syncSuanbaoFloatingVisibility)
+  win.on('minimize', syncSuanbaoFloatingVisibility)
+  win.on('restore', syncSuanbaoFloatingVisibility)
+}
+
 let isQuitting = false
 
 // --------- 快捷键 ---------
@@ -399,12 +414,15 @@ async function createWindow() {
     if (!isQuitting && suanbaoModule?.windowManager.shouldKeepMainRendererAlive()) {
       event.preventDefault()
       mainWindow?.hide()
+      syncSuanbaoFloatingVisibility()
     }
   })
 
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  attachSuanbaoMainWindowListeners(mainWindow)
 
   // Send maximized state changes to renderer
   mainWindow.on('maximize', () => {
@@ -482,6 +500,7 @@ async function showMainWindow() {
   if (!mainWindow) return
   if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.show()
+  syncSuanbaoFloatingVisibility()
   mainWindow.focus()
   mainWindow.webContents.send('window-show')
 }
@@ -539,9 +558,10 @@ if (!gotTheLock) {
   app
     .whenReady()
     .then(async () => {
-      // KOD opt: Create window immediately, let KB init in background.
-      // This avoids blocking the first paint on SQLite migrations (~2-5s).
-      await createWindow()
+      // Register Suanbao IPC before the main renderer starts. The renderer
+      // synchronizes its persisted preference as soon as React mounts, so
+      // registering after createWindow() leaves a startup race where the
+      // first setEnabled/publishBootstrap calls can be lost.
       suanbaoModule = createSuanbaoDesktopModule({
         ipcMain,
         isPackaged: app.isPackaged,
@@ -552,6 +572,9 @@ if (!gotTheLock) {
         loadPlacement: () => store.get('suanbao.desktop-placement'),
         savePlacement: (placement) => store.set('suanbao.desktop-placement', placement),
       })
+      // KOD opt: Create window immediately, let KB init in background.
+      // This avoids blocking the first paint on SQLite migrations (~2-5s).
+      await createWindow()
       knowledgeBaseInitPromise.catch((error) => {
         log.error('[KB] Background knowledge base init failed:', error)
       })

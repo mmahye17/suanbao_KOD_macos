@@ -6,7 +6,7 @@ describe('UnsupportedSuanbaoPlatformController', () => {
     const controller = new UnsupportedSuanbaoPlatformController('desktop overlay is unavailable')
     await expect(controller.getCapabilities()).resolves.toMatchObject({
       overlay: 'in-app',
-      backgroundScheduling: false,
+      backgroundScheduling: 'foreground-only',
       systemCalendarRead: false,
       reason: 'desktop overlay is unavailable',
     })

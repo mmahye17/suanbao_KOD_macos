@@ -7,6 +7,7 @@ import type {
 import { useLocation } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { getLogger } from '@/lib/utils'
 import { suanbaoRuntime } from '@/packages/suanbao/runtime'
 import platform from '@/platform'
 import { router } from '@/router'
@@ -26,17 +27,24 @@ const IN_APP_CAPABILITIES: SuanbaoPlatformCapabilities = {
   systemCalendarRead: false,
 }
 
+const log = getLogger('suanbao-runtime-host')
+const SUANBAO_SYNC_RETRY_DELAYS_MS = [0, 250, 750]
+
+async function waitForRetry(delayMs: number): Promise<void> {
+  if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
+}
+
 const STATUS_COPY: Record<SuanbaoViewModel['petState'], string> = {
-  idle: 'Suanbao is ready',
-  listening: 'Listening',
-  thinking: 'Suanbao is thinking',
-  executing: 'Suanbao is using a tool',
-  success: 'Task completed',
-  error: 'Something went wrong',
-  reminding: 'You have a reminder',
-  focus: 'Focus mode',
-  rest: 'Time for a break',
-  sleeping: 'Suanbao is resting',
+  idle: '蒜宝已就绪',
+  listening: '我在听',
+  thinking: '蒜宝正在思考',
+  executing: '蒜宝正在执行工具',
+  success: '任务完成',
+  error: '处理时遇到问题',
+  reminding: '你有一条提醒',
+  focus: '专注中',
+  rest: '休息一下吧',
+  sleeping: '蒜宝正在休息',
 }
 
 /** Keeps the isolated Electron window synchronized with the main renderer business state. */
@@ -81,27 +89,49 @@ export function SuanbaoRuntimeHost() {
 
   useEffect(() => {
     let active = true
-    void platform
-      .getSuanbaoController()
-      .getCapabilities()
-      .then((next) => {
-        if (active) setCapabilities(next)
-      })
-      .catch(() => undefined)
+    const controller = platform.getSuanbaoController()
+    // The main process decides whether the desktop window or in-app pet is visible.
+    void (async () => {
+      for (const delayMs of SUANBAO_SYNC_RETRY_DELAYS_MS) {
+        await waitForRetry(delayMs)
+        if (!active) return
+        try {
+          const next = await controller.getCapabilities()
+          if (active) setCapabilities(next)
+          return
+        } catch (error) {
+          log.warn('Failed to read Suanbao platform capabilities; retrying.', error)
+        }
+      }
+      log.error('Suanbao platform capabilities are unavailable after retries.')
+    })()
     return () => {
       active = false
     }
   }, [])
 
   useEffect(() => {
+    let active = true
     const controller = platform.getSuanbaoController()
-    void controller
-      .setEnabled(enabled)
-      .then(() => {
-        if (!enabled || hidden) return controller.hide()
-        return controller.show()
-      })
-      .catch(() => undefined)
+    void (async () => {
+      for (const delayMs of SUANBAO_SYNC_RETRY_DELAYS_MS) {
+        await waitForRetry(delayMs)
+        if (!active) return
+        try {
+          await controller.setEnabled(enabled)
+          if (!enabled || hidden) await controller.hide()
+          // show() synchronizes visibility and only floats while the main window is hidden.
+          else await controller.show()
+          return
+        } catch (error) {
+          log.warn('Failed to synchronize the Suanbao desktop window; retrying.', error)
+        }
+      }
+      log.error('Suanbao desktop window synchronization failed after retries.')
+    })()
+    return () => {
+      active = false
+    }
   }, [enabled, hidden])
 
   const viewModel = useMemo<SuanbaoViewModel>(() => {
@@ -177,7 +207,7 @@ export function SuanbaoRuntimeHost() {
       bootstrap={bootstrap}
       viewModel={viewModel}
       onCommand={onCommand}
-      onIntegrationError={() => undefined}
+      onIntegrationError={(error) => log.error('Suanbao desktop bridge failed.', error)}
     />
   )
 }
