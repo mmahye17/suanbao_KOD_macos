@@ -2,6 +2,8 @@
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ElectronIPC } from 'src/shared/electron-types'
+import { SUANBAO_IPC_CHANNELS } from 'src/shared/suanbao-ipc'
+import type { SuanbaoHostRequest } from 'src/shared/types/suanbao'
 
 // export type Channels = 'ipc-example';
 
@@ -47,6 +49,15 @@ const electronHandler: ElectronIPC = {
     }
     ipcRenderer.on('navigate-to', listener)
     return () => ipcRenderer.off('navigate-to', listener)
+  },
+  suanbao: {
+    publishBootstrap: (bootstrap) => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.publishBootstrap, bootstrap),
+    publishViewModel: (viewModel) => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.publishViewModel, viewModel),
+    onCommand: (callback: (request: SuanbaoHostRequest) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, request: SuanbaoHostRequest) => callback(request)
+      ipcRenderer.on(SUANBAO_IPC_CHANNELS.hostCommand, listener)
+      return () => ipcRenderer.off(SUANBAO_IPC_CHANNELS.hostCommand, listener)
+    },
   },
 
   // Auto-updater events

@@ -41,6 +41,8 @@ import {
   setStoreBlob,
   store,
 } from './store-node'
+import { createSuanbaoDesktopModule, type SuanbaoDesktopModule } from './suanbao'
+import { createSuanbaoTrayItems } from './suanbao/tray'
 import * as windowState from './window_state'
 
 // KOD opt: Knowledge base initialized lazily on first use (saves ~300MB at startup).
@@ -155,6 +157,8 @@ log.info(`📱 URL Scheme registered: ${PROTOCOL_SCHEME}://`)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+let suanbaoModule: SuanbaoDesktopModule | null = null
+let isQuitting = false
 
 // --------- 快捷键 ---------
 
@@ -254,9 +258,18 @@ function createTray() {
       click: showOrHideWindow,
       accelerator: getSettings().shortcuts.quickToggle,
     },
+    ...(suanbaoModule
+      ? createSuanbaoTrayItems(suanbaoModule.windowManager, {
+          toggle: locale.t('Show/Hide Suanbao'),
+          toggleAnimation: locale.t('Pause/Resume Suanbao Animation'),
+        })
+      : []),
     {
       label: locale.t('Exit'),
-      click: () => app.quit(),
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
       accelerator: 'Command+Q',
     },
   ])
@@ -379,9 +392,13 @@ async function createWindow() {
   })
 
   // 窗口关闭时保存窗口大小与位置
-  mainWindow.on('close', () => {
+  mainWindow.on('close', (event) => {
     if (mainWindow) {
       windowState.saveState(mainWindow)
+    }
+    if (!isQuitting && suanbaoModule?.windowManager.shouldKeepMainRendererAlive()) {
+      event.preventDefault()
+      mainWindow?.hide()
     }
   })
 
@@ -460,6 +477,15 @@ async function showOrHideWindow() {
   }
 }
 
+async function showMainWindow() {
+  if (!mainWindow) await createWindow()
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+  mainWindow.webContents.send('window-show')
+}
+
 // --------- 应用管理 ---------
 
 const gotTheLock = app.isPackaged ? app.requestSingleInstanceLock() : true
@@ -516,6 +542,16 @@ if (!gotTheLock) {
       // KOD opt: Create window immediately, let KB init in background.
       // This avoids blocking the first paint on SQLite migrations (~2-5s).
       await createWindow()
+      suanbaoModule = createSuanbaoDesktopModule({
+        ipcMain,
+        isPackaged: app.isPackaged,
+        dirname: __dirname,
+        rendererUrl: process.env.ELECTRON_RENDERER_URL,
+        getMainWindow: () => mainWindow,
+        openMainWindow: () => void showMainWindow(),
+        loadPlacement: () => store.get('suanbao.desktop-placement'),
+        savePlacement: (placement) => store.set('suanbao.desktop-placement', placement),
+      })
       knowledgeBaseInitPromise.catch((error) => {
         log.error('[KB] Background knowledge base init failed:', error)
       })
@@ -571,9 +607,12 @@ if (!gotTheLock) {
           log.error('shortcut: failed to unregister', e)
         }
         mcpIpc.closeAllTransports()
+        suanbaoModule?.dispose()
+        suanbaoModule = null
         destroyTray()
       })
       app.on('before-quit', () => {
+        isQuitting = true
         destroyTray()
       })
     })

@@ -49,6 +49,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { trackJkViewEvent } from '@/analytics/jk'
 import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import SuanbaoPet from '@/components/suanbao/SuanbaoPet'
+import { SuanbaoRuntimeHost } from '@/components/suanbao/SuanbaoRuntimeHost'
 import SettingsModal, { navigateToSettings } from '@/modals/Settings'
 import { prefetchModelRegistry } from '@/packages/model-registry'
 import { getOS } from '@/packages/navigator'
@@ -398,6 +399,7 @@ function Root() {
       <Toasts /> {/* mui */}
       <SettingsModal />
       <SuanbaoPet />
+      <SuanbaoRuntimeHost />
     </Box>
   )
 }

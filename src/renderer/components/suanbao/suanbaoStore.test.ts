@@ -9,9 +9,9 @@ describe('Suanbao preference store', () => {
     suanbaoStore.getState().restore()
   })
 
-  it('defaults to enabled with full animation', () => {
+  it('defaults to disabled with full animation', () => {
     expect(sanitizeSuanbaoPreferences()).toEqual({
-      enabled: true,
+      enabled: false,
       hidden: false,
       position: { x: 0.9, y: 0.78 },
       animation: 'full',
@@ -37,7 +37,7 @@ describe('Suanbao preference store', () => {
     })
     suanbaoStore.getState().restore()
     expect(suanbaoStore.getState()).toMatchObject({
-      enabled: true,
+      enabled: false,
       hidden: false,
       position: { x: 0.9, y: 0.78 },
       animation: 'full',

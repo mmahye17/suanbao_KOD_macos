@@ -10,6 +10,8 @@ import { getBrowser, getOS } from '../packages/navigator'
 import type { Platform, PlatformType } from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 import type { SessionAttachmentRagController } from './session-attachment-rag/interface'
+import { UnsupportedSuanbaoPlatformController } from './suanbao/unsupported-controller'
+import type { SuanbaoPlatformController } from './suanbao/interface'
 import { IndexedDBStorage } from './storages'
 import WebExporter from './web_exporter'
 import webLogger from './web_logger'
@@ -192,6 +194,10 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
 
   public getSessionAttachmentRagController(): SessionAttachmentRagController {
     throw new Error('Session attachment RAG is not implemented on web.')
+  }
+
+  public getSuanbaoController(): SuanbaoPlatformController {
+    return new UnsupportedSuanbaoPlatformController('Desktop overlay is unavailable in the web client')
   }
 
   public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {

@@ -16,6 +16,8 @@ import { IndexedDBTaskSessionStorage, type TaskSessionStorage } from '@/storage/
 import type { Exporter, Platform, PlatformType, Storage } from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 import type { SessionAttachmentRagController } from './session-attachment-rag/interface'
+import { UnsupportedSuanbaoPlatformController } from './suanbao/unsupported-controller'
+import type { SuanbaoPlatformController } from './suanbao/interface'
 
 /**
  * 内存存储类，用于测试环境
@@ -325,6 +327,10 @@ export default class TestPlatform implements Platform {
 
   public getSessionAttachmentRagController(): SessionAttachmentRagController {
     throw new Error('Session attachment RAG not implemented in test platform.')
+  }
+
+  public getSuanbaoController(): SuanbaoPlatformController {
+    return new UnsupportedSuanbaoPlatformController('Desktop overlay is disabled in tests')
   }
 
   public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {

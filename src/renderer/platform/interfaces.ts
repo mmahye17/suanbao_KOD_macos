@@ -5,6 +5,7 @@ import type { SessionMetaStorage } from '@/storage/SessionMetaStorage'
 import type { TaskSessionStorage } from '@/storage/TaskSessionStorage'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 import type { SessionAttachmentRagController } from './session-attachment-rag/interface'
+import type { SuanbaoPlatformController } from './suanbao/interface'
 
 export type PlatformType = 'web' | 'desktop' | 'mobile'
 
@@ -100,6 +101,7 @@ export interface Platform extends Storage {
 
   getKnowledgeBaseController(): KnowledgeBaseController
   getSessionAttachmentRagController(): SessionAttachmentRagController
+  getSuanbaoController(): SuanbaoPlatformController
 
   getImageGenerationStorage(accountKey?: string): ImageGenerationStorage
 

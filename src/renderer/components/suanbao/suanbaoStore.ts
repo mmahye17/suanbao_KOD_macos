@@ -12,7 +12,7 @@ export interface SuanbaoPreferences {
 }
 
 const DEFAULT_PREFERENCES: SuanbaoPreferences = {
-  enabled: true,
+  enabled: false,
   hidden: false,
   position: DEFAULT_SUANBAO_POSITION,
   animation: 'full',
@@ -25,7 +25,7 @@ export function getSuanbaoAccountKey(email?: string | null): string {
 
 export function sanitizeSuanbaoPreferences(value?: Partial<SuanbaoPreferences> | null): SuanbaoPreferences {
   return {
-    enabled: value?.enabled ?? true,
+    enabled: value?.enabled ?? false,
     hidden: value?.hidden ?? false,
     position: clampNormalizedPosition(value?.position ?? DEFAULT_SUANBAO_POSITION),
     animation: ['full', 'reduced', 'off'].includes(value?.animation || '')

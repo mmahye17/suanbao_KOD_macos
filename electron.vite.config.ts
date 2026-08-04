@@ -182,7 +182,10 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: isProduction ? 'release/app/dist/preload' : undefined,
         lib: {
-          entry: resolve(__dirname, 'src/preload/index.ts'),
+          entry: {
+            index: resolve(__dirname, 'src/preload/index.ts'),
+            suanbao: resolve(__dirname, 'src/preload/suanbao.ts'),
+          },
         },
         sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory
         minify: isProduction,
@@ -243,6 +246,12 @@ export default defineConfig(({ mode }) => {
         sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory
         minify: isProduction ? 'esbuild' : false, // Use esbuild for faster, less memory-intensive minification
         rollupOptions: {
+          input: isDesktop
+            ? {
+                index: resolve(__dirname, 'src/renderer/index.html'),
+                suanbao: resolve(__dirname, 'src/renderer/suanbao-window/index.html'),
+              }
+            : resolve(__dirname, 'src/renderer/index.html'),
           output: {
             entryFileNames: 'js/[name].[hash].js',
             chunkFileNames: 'js/[name].[hash].js',

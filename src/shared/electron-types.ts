@@ -1,3 +1,5 @@
+import type { SuanbaoHostBridgeApi } from './types/suanbao'
+
 export interface ElectronIPC {
   invoke: (channel: string, ...args: any[]) => Promise<any>
   getPathForFile: (file: File) => string
@@ -8,6 +10,7 @@ export interface ElectronIPC {
   onUpdateDownloaded: (callback: () => void) => () => void
   addMcpStdioTransportEventListener: (transportId: string, event: string, callback?: (...args: any[]) => void) => void
   onNavigate: (callback: (path: string) => void) => () => void
+  suanbao?: SuanbaoHostBridgeApi
 
   // Auto-updater events
   onUpdaterChecking: (callback: () => void) => () => void

@@ -12,13 +12,19 @@ import { buildSuanbaoPrompt, type SuanbaoPromptKind } from './suanbaoPrompts'
 
 export { buildSuanbaoPrompt, type SuanbaoPromptKind } from './suanbaoPrompts'
 
-export async function startSuanbaoPrompt(kind: SuanbaoPromptKind, input: string): Promise<string> {
+export async function startSuanbaoMessage(input: string): Promise<string> {
+  const content = input.trim()
+  if (!content) throw new Error('Enter a message first.')
   const session = await createEmpty('chat')
   await submitNewUserMessage(session.id, {
-    newUserMsg: createMessage('user', buildSuanbaoPrompt(kind, input)),
+    newUserMsg: createMessage('user', content),
     needGenerating: true,
   })
   return session.id
+}
+
+export function startSuanbaoPrompt(kind: SuanbaoPromptKind, input: string): Promise<string> {
+  return startSuanbaoMessage(buildSuanbaoPrompt(kind, input))
 }
 
 export async function continueRecentChat(): Promise<string | null> {

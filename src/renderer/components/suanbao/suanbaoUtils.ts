@@ -43,5 +43,5 @@ export function pixelsToNormalized(position: SuanbaoPosition, bounds: SuanbaoBou
 
 export function shouldShowSuanbao(pathname: string, settingsModalOpen: boolean): boolean {
   if (settingsModalOpen || pathname.startsWith('/settings')) return false
-  return pathname === '/' || pathname.startsWith('/session/') || pathname === '/task' || pathname.startsWith('/task/')
+  return !pathname.startsWith('/guide') && pathname !== '/about'
 }

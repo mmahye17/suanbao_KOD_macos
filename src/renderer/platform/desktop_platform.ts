@@ -15,6 +15,8 @@ import { getOS } from '../packages/navigator'
 import type { Platform, PlatformType } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import DesktopSessionAttachmentRagController from './session-attachment-rag/desktop-controller'
+import { DesktopSuanbaoPlatformController } from './suanbao/desktop-controller'
+import type { SuanbaoPlatformController } from './suanbao/interface'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
 
@@ -29,6 +31,7 @@ export default class DesktopPlatform implements Platform {
 
   private _kbController?: DesktopKnowledgeBaseController
   private _sessionAttachmentRagController?: DesktopSessionAttachmentRagController
+  private _suanbaoController?: SuanbaoPlatformController
   private _imageGenerationStorage: ImageGenerationStorage | null = null
   private _taskSessionStorage: TaskSessionStorage | null = null
   private _sessionMetaStorage: SessionMetaStorage | null = null
@@ -326,6 +329,11 @@ export default class DesktopPlatform implements Platform {
       this._sessionAttachmentRagController = new DesktopSessionAttachmentRagController(this.ipc)
     }
     return this._sessionAttachmentRagController
+  }
+
+  public getSuanbaoController(): SuanbaoPlatformController {
+    if (!this._suanbaoController) this._suanbaoController = new DesktopSuanbaoPlatformController(this.ipc)
+    return this._suanbaoController
   }
 
   public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {

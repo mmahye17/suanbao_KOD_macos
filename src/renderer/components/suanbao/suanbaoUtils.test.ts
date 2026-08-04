@@ -18,6 +18,8 @@ describe('Suanbao position utilities', () => {
     expect(shouldShowSuanbao('/', false)).toBe(true)
     expect(shouldShowSuanbao('/session/abc', false)).toBe(true)
     expect(shouldShowSuanbao('/task/abc', false)).toBe(true)
+    expect(shouldShowSuanbao('/image-creator', false)).toBe(true)
+    expect(shouldShowSuanbao('/copilots', false)).toBe(true)
     expect(shouldShowSuanbao('/settings/suanbao', false)).toBe(false)
     expect(shouldShowSuanbao('/', true)).toBe(false)
   })

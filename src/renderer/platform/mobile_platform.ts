@@ -18,6 +18,8 @@ import type { KnowledgeBaseController } from './knowledge-base/interface'
 import MobileExporter from './mobile_exporter'
 import mobileLogger from './mobile_logger'
 import type { SessionAttachmentRagController } from './session-attachment-rag/interface'
+import { UnsupportedSuanbaoPlatformController } from './suanbao/unsupported-controller'
+import type { SuanbaoPlatformController } from './suanbao/interface'
 import { MobileSQLiteStorage } from './storages'
 import { parseTextFileLocally } from './web_platform_utils'
 
@@ -281,6 +283,10 @@ export default class MobilePlatform extends MobileSQLiteStorage implements Platf
 
   public getSessionAttachmentRagController(): SessionAttachmentRagController {
     throw new Error('Session attachment RAG is not implemented on mobile.')
+  }
+
+  public getSuanbaoController(): SuanbaoPlatformController {
+    return new UnsupportedSuanbaoPlatformController('Desktop overlay is unavailable in the mobile client')
   }
 
   public getImageGenerationStorage(accountKey?: string): ImageGenerationStorage {
