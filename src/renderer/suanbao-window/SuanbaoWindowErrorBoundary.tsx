@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { suanbaoWindowCopy } from './copy'
+import { defaultSuanbaoWindowCopy } from './copy'
 
 interface Props {
   children: ReactNode
@@ -25,13 +25,13 @@ export class SuanbaoWindowErrorBoundary extends Component<Props, State> {
     return (
       <main className="suanbao-window suanbao-window-fallback" role="alert">
         <section className="suanbao-bubble">
-          <p>{suanbaoWindowCopy.failure}</p>
+          <p>{defaultSuanbaoWindowCopy.failure}</p>
           <div className="suanbao-bubble-actions">
             <button type="button" onClick={() => void window.suanbaoAPI.openMainWindow()}>
-              {suanbaoWindowCopy.openKod}
+              {defaultSuanbaoWindowCopy.openKod}
             </button>
             <button type="button" onClick={() => void window.suanbaoAPI.hide()}>
-              {suanbaoWindowCopy.hideSuanbao}
+              {defaultSuanbaoWindowCopy.hideSuanbao}
             </button>
           </div>
         </section>

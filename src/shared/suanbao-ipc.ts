@@ -9,6 +9,7 @@ export const SUANBAO_IPC_CHANNELS = {
   setEnabled: 'suanbao:set-enabled',
   show: 'suanbao:show',
   hide: 'suanbao:hide',
+  minimize: 'suanbao:minimize',
   openMainWindow: 'suanbao:open-main-window',
   publishBootstrap: 'suanbao:publish-bootstrap',
   publishViewModel: 'suanbao:publish-view-model',

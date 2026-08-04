@@ -78,6 +78,10 @@ export function registerSuanbaoIpcHandlers(
     requireKnownWindow(event)
     windowManager.hide()
   })
+  handle(SUANBAO_IPC_CHANNELS.minimize, (event) => {
+    requirePetWindow(event)
+    windowManager.minimize()
+  })
   handle(SUANBAO_IPC_CHANNELS.openMainWindow, (event) => {
     requireKnownWindow(event)
     windowManager.openMainWindow()

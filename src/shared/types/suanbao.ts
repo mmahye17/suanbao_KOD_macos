@@ -77,10 +77,14 @@ export const suanbaoViewModelSchema = z
   .strict()
 export type SuanbaoViewModel = z.infer<typeof suanbaoViewModelSchema>
 
+export const suanbaoWindowLanguageSchema = z.enum(['zh-Hans', 'en'])
+export type SuanbaoWindowLanguage = z.infer<typeof suanbaoWindowLanguageSchema>
+
 export const suanbaoBootstrapSchema = z
   .object({
     enabled: z.boolean(),
     visible: z.boolean(),
+    language: suanbaoWindowLanguageSchema,
     animation: suanbaoAnimationLevelSchema,
     placement: suanbaoPlacementSchema,
     capabilities: suanbaoPlatformCapabilitiesSchema,
@@ -150,6 +154,7 @@ export interface SuanbaoPetWindowApi {
   updatePlacement(placement: SuanbaoPlacement): Promise<SuanbaoPlacement>
   setInteractiveRegion(input: SuanbaoInteractiveRegion): Promise<void>
   hide(): Promise<void>
+  minimize(): Promise<void>
   openMainWindow(): Promise<void>
   onViewModelChanged(listener: (viewModel: SuanbaoViewModel) => void): () => void
   onNotificationClicked(listener: (entityId: string) => void): () => void

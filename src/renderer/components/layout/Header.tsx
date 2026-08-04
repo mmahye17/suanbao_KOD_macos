@@ -13,7 +13,6 @@ import { useUIStore } from '@/stores/uiStore'
 import Divider from '../common/Divider'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Toolbar from './Toolbar'
-import WindowControls from './WindowControls'
 
 export default function Header(props: { session: Session }) {
   const { t } = useTranslation()
@@ -112,7 +111,7 @@ export default function Header(props: { session: Session }) {
 
         <Toolbar sessionId={currentSession.id} />
 
-        <WindowControls className="-mr-3 ml-2" />
+        <div className="w-[120px] shrink-0" />
       </Flex>
 
       <Divider />

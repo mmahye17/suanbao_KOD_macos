@@ -36,6 +36,7 @@ export class SuanbaoWindowManager {
   private animation: SuanbaoAnimationLevel = 'off'
   private placement: SuanbaoPlacement
   private saveTimer: ReturnType<typeof setTimeout> | undefined
+  private disposing = false
   private readonly displayChanged = () => this.restorePlacement()
 
   constructor(private readonly options: SuanbaoWindowManagerOptions) {
@@ -107,6 +108,12 @@ export class SuanbaoWindowManager {
     this.petWindow?.hide()
   }
 
+  minimize(): void {
+    const window = this.petWindow
+    if (!window || window.isDestroyed()) return
+    window.minimize()
+  }
+
   /** Keep the floating pet for tray/minimized mode; the main window renders the in-app pet. */
   async syncFloatingVisibility(): Promise<void> {
     if (!this.enabled || !this.shouldShowFloating()) {
@@ -129,16 +136,21 @@ export class SuanbaoWindowManager {
   }
 
   async toggleFromTray(): Promise<void> {
-    if (!this.enabled) {
-      await this.setEnabled(true)
+    if (!this.enabled) this.enabled = true
+    const window = await this.ensureWindow()
+    if (window.isMinimized()) {
+      window.restore()
+      window.show()
+      window.focus()
       return
     }
-    if (!this.shouldShowFloating()) {
-      this.hide()
+    if (window.isVisible()) {
+      window.hide()
       return
     }
-    if (this.isVisible()) this.hide()
-    else await this.syncFloatingVisibility()
+    this.restorePlacement()
+    window.show()
+    window.focus()
   }
 
   setInteractive(interactive: boolean): void {
@@ -174,6 +186,7 @@ export class SuanbaoWindowManager {
   }
 
   destroy(): void {
+    this.disposing = true
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.options.savePlacement(this.placement)
     screen.off('display-added', this.displayChanged)
@@ -206,7 +219,8 @@ export class SuanbaoWindowManager {
       frame: false,
       resizable: false,
       show: false,
-      skipTaskbar: true,
+      skipTaskbar: false,
+      minimizable: true,
       alwaysOnTop: true,
       focusable: true,
       hasShadow: false,
@@ -235,6 +249,11 @@ export class SuanbaoWindowManager {
     })
     window.webContents.on('devtools-opened', () => {
       window.webContents.closeDevTools()
+    })
+    window.on('close', (event) => {
+      if (this.disposing) return
+      event.preventDefault()
+      window.hide()
     })
     window.on('closed', () => {
       if (this.petWindow === window) this.petWindow = null

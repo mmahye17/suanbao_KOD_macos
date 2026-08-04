@@ -35,6 +35,7 @@ export class SuanbaoBroker {
     const bootstrap: SuanbaoBootstrap = {
       enabled: this.windowManager.isEnabled(),
       visible: this.windowManager.isVisible(),
+      language: 'zh-Hans',
       animation: this.windowManager.getAnimation(),
       placement: this.windowManager.getPlacement(),
       capabilities: this.windowManager.getCapabilities(),

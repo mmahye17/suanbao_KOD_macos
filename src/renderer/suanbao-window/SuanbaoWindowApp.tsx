@@ -1,7 +1,7 @@
 import type { SuanbaoBootstrap, SuanbaoPlacement, SuanbaoViewModel } from '@shared/types/suanbao'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { suanbaoWindowCopy } from './copy'
+import { defaultSuanbaoWindowCopy, getSuanbaoWindowCopy } from './copy'
 
 const DRAG_THRESHOLD_PX = 4
 const DRAG_THROTTLE_MS = 50
@@ -15,7 +15,7 @@ interface DragState {
   lastSentAt: number
 }
 
-function offlineViewModel(message = suanbaoWindowCopy.offline): SuanbaoViewModel {
+function offlineViewModel(message = defaultSuanbaoWindowCopy.offline): SuanbaoViewModel {
   return {
     revision: 0,
     petState: 'idle',
@@ -51,7 +51,7 @@ export function SuanbaoWindowApp() {
         placementRef.current = next.placement
       })
       .catch(() => {
-        if (active) setViewModel(offlineViewModel(suanbaoWindowCopy.hostUnavailable))
+        if (active) setViewModel(offlineViewModel(defaultSuanbaoWindowCopy.hostUnavailable))
       })
 
     return () => {
@@ -111,6 +111,7 @@ export function SuanbaoWindowApp() {
   }
 
   const isAnimationOff = bootstrap?.animation === 'off'
+  const copy = getSuanbaoWindowCopy(bootstrap?.language ?? 'zh-Hans')
   return (
     <main
       className={`suanbao-window ${isAnimationOff ? 'animation-off' : ''}`}
@@ -119,6 +120,33 @@ export function SuanbaoWindowApp() {
         if (!bubbleOpen && !dragRef.current) void window.suanbaoAPI.setInteractiveRegion({ interactive: false })
       }}
     >
+      <div className="suanbao-window-controls" aria-label={copy.windowControls}>
+        <button
+          type="button"
+          aria-label={copy.minimizeSuanbao}
+          title={copy.minimize}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            void window.suanbaoAPI.minimize().catch(() => undefined)
+          }}
+        >
+          <span aria-hidden="true">−</span>
+        </button>
+        <button
+          type="button"
+          aria-label={copy.hideSuanbao}
+          title={copy.hide}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            void window.suanbaoAPI.hide().catch(() => undefined)
+          }}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+
       {bubbleOpen && (
         <section className="suanbao-bubble" aria-live="polite">
           {viewModel.operation?.phase === 'awaiting-confirmation' ? (
@@ -140,7 +168,7 @@ export function SuanbaoWindowApp() {
                     if (operationId) void window.suanbaoAPI.cancelOperation(operationId)
                   }}
                 >
-                  取消
+                  {copy.cancel}
                 </button>
                 <button
                   type="button"
@@ -149,19 +177,19 @@ export function SuanbaoWindowApp() {
                     if (operationId) void window.suanbaoAPI.confirmOperation(operationId)
                   }}
                 >
-                  确认
+                  {copy.confirm}
                 </button>
               </div>
             </>
           ) : (
-            <p>{viewModel.message || suanbaoWindowCopy.greeting}</p>
+            <p>{viewModel.message || copy.greeting}</p>
           )}
           <div className="suanbao-bubble-actions">
             <button type="button" onClick={() => void window.suanbaoAPI.openMainWindow()}>
-              {suanbaoWindowCopy.openKod}
+              {copy.openKod}
             </button>
             <button type="button" onClick={() => void window.suanbaoAPI.hide()}>
-              {suanbaoWindowCopy.hide}
+              {copy.hide}
             </button>
           </div>
         </section>
@@ -170,7 +198,7 @@ export function SuanbaoWindowApp() {
       <button
         type="button"
         className={`suanbao-pet state-${viewModel.petState}`}
-        aria-label={`${suanbaoWindowCopy.stateLabel}${viewModel.petState}`}
+        aria-label={`${copy.stateLabel}${viewModel.petState}`}
         onPointerDown={handlePointerDown}
         onPointerMove={updatePlacement}
         onPointerUp={handlePointerUp}
@@ -187,7 +215,7 @@ export function SuanbaoWindowApp() {
       </button>
 
       <span className={`suanbao-status connection-${viewModel.connection}`}>
-        {viewModel.connection === 'online' ? suanbaoWindowCopy.online : suanbaoWindowCopy.offlineMode}
+        {viewModel.connection === 'online' ? copy.online : copy.offlineMode}
       </span>
     </main>
   )

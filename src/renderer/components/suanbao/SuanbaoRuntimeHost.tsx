@@ -14,6 +14,7 @@ import platform from '@/platform'
 import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
 import { useSession } from '@/stores/chatStore'
+import { useLanguage } from '@/stores/settingsStore'
 import { useCurrentTaskId, useTaskSessionRecord } from '@/stores/taskSessionStore'
 import { SuanbaoDesktopBridgeHost } from './SuanbaoDesktopBridgeHost'
 import { continueRecentChat, openSuanbaoSettings, startNewChat, startSuanbaoMessage } from './suanbaoActions'
@@ -70,6 +71,7 @@ export function SuanbaoRuntimeHost() {
   const hidden = useSuanbaoStore((state) => state.hidden)
   const animation = useSuanbaoStore((state) => state.animation)
   const accountKey = useSuanbaoStore((state) => state.accountKey)
+  const language = useLanguage()
   const runtimeSnapshot = useSyncExternalStore(
     suanbaoRuntime.subscribe.bind(suanbaoRuntime),
     suanbaoRuntime.getSnapshot
@@ -170,6 +172,7 @@ export function SuanbaoRuntimeHost() {
     () => ({
       enabled,
       visible: enabled && !hidden,
+      language: language === 'en' ? 'en' : 'zh-Hans',
       animation,
       placement: {
         mode: capabilities.overlay === 'desktop-window' ? 'desktop' : 'in-app',
@@ -181,7 +184,7 @@ export function SuanbaoRuntimeHost() {
       capabilities,
       viewModel,
     }),
-    [animation, capabilities, enabled, hidden, viewModel]
+    [animation, capabilities, enabled, hidden, language, viewModel]
   )
 
   const onCommand = useCallback((request: SuanbaoHostRequest) => {

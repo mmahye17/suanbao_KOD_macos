@@ -21,6 +21,7 @@ const api: SuanbaoPetWindowApi = {
   updatePlacement: (placement) => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.updatePlacement, placement),
   setInteractiveRegion: (input) => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.setInteractiveRegion, input),
   hide: () => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.hide),
+  minimize: () => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.minimize),
   openMainWindow: () => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.openMainWindow),
   onViewModelChanged: (listener: (viewModel: SuanbaoViewModel) => void) =>
     onValidatedEvent<unknown>(SUANBAO_IPC_CHANNELS.viewModelChanged, (value) => {

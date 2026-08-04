@@ -5,7 +5,6 @@ import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useUIStore } from '@/stores/uiStore'
-import WindowControls from './WindowControls'
 
 export type PageProps = {
   children?: React.ReactNode
@@ -53,7 +52,7 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
           )}
         </Flex>
         {right}
-        <WindowControls className="-mr-3 ml-2" />
+        <div className="w-[120px] shrink-0" />
         {isSmallScreen && !right && <Box w={28} />}
       </Flex>
 

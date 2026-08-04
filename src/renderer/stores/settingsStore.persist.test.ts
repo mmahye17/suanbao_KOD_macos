@@ -80,7 +80,7 @@ describe('settingsStore persistence', () => {
           isCustom: true,
         },
       ],
-      __version: 4,
+      __version: 5,
     }
 
     const { initSettingsStore, settingsStore } = await loadSettingsStoreModule(persistedSettings)
@@ -107,7 +107,7 @@ describe('settingsStore persistence', () => {
           apiKey: 'sk-claude',
         },
       },
-      __version: 4,
+      __version: 5,
     }
 
     const { initSettingsStore, settingsStore, mergeProviderSettings, mockStorage } =
@@ -145,7 +145,22 @@ describe('settingsStore persistence', () => {
           apiHost: 'https://api.openai.com',
         },
       },
-      __version: 4,
+      __version: 5,
     })
+  })
+
+  it.each([
+    { name: 'missing settings', persisted: null, expected: 'zh-Hans' },
+    { name: 'missing language', persisted: { __version: 4 }, expected: 'zh-Hans' },
+    { name: 'invalid language', persisted: { language: 'invalid', __version: 4 }, expected: 'zh-Hans' },
+    { name: 'explicit English', persisted: { language: 'en', __version: 4 }, expected: 'en' },
+    { name: 'explicit Traditional Chinese', persisted: { language: 'zh-Hant', __version: 4 }, expected: 'zh-Hant' },
+    { name: 'explicit language without init marker', persisted: { language: 'ja', __version: 4 }, expected: 'ja' },
+  ])('uses the correct language for $name', async ({ persisted, expected }) => {
+    const { initSettingsStore } = await loadSettingsStoreModule(persisted)
+
+    const hydrated = await initSettingsStore()
+
+    expect(hydrated.language).toBe(expected)
   })
 })

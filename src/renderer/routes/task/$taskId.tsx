@@ -38,7 +38,6 @@ import Divider from '@/components/common/Divider'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
 import ProviderImageIcon from '@/components/icons/ProviderImageIcon'
-import WindowControls from '@/components/layout/WindowControls'
 import Markdown, { BlockCodeCollapsedStateProvider } from '@/components/Markdown'
 import ModelSelector from '@/components/ModelSelector'
 import DirectoryMenu from '@/components/task/DirectoryMenu'
@@ -515,7 +514,7 @@ function TaskChat({ session }: { session: NonNullable<ReturnType<typeof useTaskS
             {session.name}
           </Text>
         </Flex>
-        <WindowControls className="-mr-3 ml-2" />
+        <div className="w-[120px] shrink-0" />
       </Flex>
       <Divider />
 

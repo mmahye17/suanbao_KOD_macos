@@ -4,8 +4,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import Toasts from '@/components/common/Toasts'
 import DesktopDownloadReminder from '@/components/layout/DesktopDownloadReminder'
 import ExitFullscreenButton from '@/components/layout/ExitFullscreenButton'
+import WindowControls from '@/components/layout/WindowControls'
 import useAppTheme from '@/hooks/useAppTheme'
-import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useSidebarWidth } from '@/hooks/useScreenChange'
@@ -350,7 +350,12 @@ function Root() {
   return (
     <Box className="box-border App relative" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <BackgroundImageOverlay />
-      {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && <ExitFullscreenButton />}
+      {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && (
+        <>
+          <ExitFullscreenButton />
+          <WindowControls className="fixed right-0 top-0 z-[5000] bg-chatbox-background-primary" />
+        </>
+      )}
       <Grid container className="h-full relative z-[1]">
         <Sidebar />
         <Box
@@ -676,7 +681,6 @@ export const Route = createRootRoute({
   component: () => {
     useI18nEffect()
     premiumActions.useAutoValidate() // 每次启动都执行 license 检查，防止用户在lemonsqueezy管理页面中取消了当前设备的激活
-    useSystemLanguageWhenInit()
     useShortcut()
     const theme = useAppTheme()
     const _theme = useTheme()

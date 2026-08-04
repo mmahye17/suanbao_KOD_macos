@@ -79,7 +79,7 @@ export function settings(): Settings {
     defaultAssistantAvatarKey: '',
     backgroundImageKey: '',
     theme: Theme.System,
-    language: 'en',
+    language: 'zh-Hans',
     fontSize: 14,
     spellCheck: true,
 
