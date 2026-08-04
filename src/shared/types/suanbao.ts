@@ -184,6 +184,23 @@ export interface SuanbaoPreferences {
   doNotDisturb?: { start: string; end: string }
 }
 
+// Zod schema mirroring SuanbaoPreferences，供 SettingsSchema 校验/回填默认值（arch §10.1：偏好进 Settings）。
+// z.infer 与上方接口结构一致；schemaVersion 用 z.literal(2) 精确匹配接口的字面量类型。
+export const suanbaoPreferencesSchema = z.object({
+  schemaVersion: z.literal(2).catch(2),
+  enabled: z.boolean().catch(false),
+  hidden: z.boolean().catch(false),
+  activeMode: z.boolean().catch(false),
+  soundEnabled: z.boolean().catch(false),
+  animation: suanbaoAnimationLevelSchema.catch('full'),
+  locked: z.boolean().catch(false),
+  desktopOverlayEnabled: z.boolean().catch(false),
+  notificationsEnabled: z.boolean().catch(false),
+  locationMode: z.enum(['permission', 'manual', 'off']).catch('off'),
+  calendarEnabled: z.boolean().catch(false),
+  doNotDisturb: z.object({ start: z.string(), end: z.string() }).optional(),
+})
+
 export type SuanbaoDomainCommand =
   | { type: 'message'; input: string; locale: string }
   | { type: 'navigate'; route: SuanbaoRouteId }

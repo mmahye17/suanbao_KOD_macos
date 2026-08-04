@@ -151,6 +151,19 @@ export function settings(): Settings {
       enabledSkillNames: [],
       translationEnabled: true,
     },
+    suanbao: {
+      schemaVersion: 2,
+      enabled: false,
+      hidden: false,
+      activeMode: false,
+      soundEnabled: false,
+      animation: 'full',
+      locked: false,
+      desktopOverlayEnabled: false,
+      notificationsEnabled: false,
+      locationMode: 'off',
+      calendarEnabled: false,
+    },
   }
 }
 

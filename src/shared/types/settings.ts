@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ModelProviderEnum, ModelProviderType } from './provider'
 import { SkillSettingsSchema } from './skills'
+import { suanbaoPreferencesSchema } from './suanbao'
 
 // Re-export for backward compatibility
 export { ModelProviderType } from './provider'
@@ -414,6 +415,20 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   skills: SkillSettingsSchema.catch({
     enabledSkillNames: [],
     translationEnabled: true,
+  }),
+  // 蒜宝 A 区偏好（arch §10.1）：OS 用户级，进 Settings，不带 accountKey。
+  suanbao: suanbaoPreferencesSchema.catch({
+    schemaVersion: 2,
+    enabled: false,
+    hidden: false,
+    activeMode: false,
+    soundEnabled: false,
+    animation: 'full',
+    locked: false,
+    desktopOverlayEnabled: false,
+    notificationsEnabled: false,
+    locationMode: 'off',
+    calendarEnabled: false,
   }),
 })
 

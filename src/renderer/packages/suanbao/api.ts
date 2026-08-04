@@ -1,0 +1,43 @@
+// 蒜宝（suanbao）数据层公共面：埋点入口 + 一键清除。
+// 见架构.md §15.3（埋点门控）与 §16/§19.1（删除全部本机蒜宝数据）。
+// 实际事件埋点的调用点（pet_show/pet_hide 等）留给后续 pet 交互 UI，不在数据层本轮范围。
+import { suanbaoStore } from '@/components/suanbao/suanbaoStore'
+import platform from '@/platform'
+import { getSuanbaoRepository } from './repositories/createSuanbaoRepository'
+
+/**
+ * 将标量 props 统一转为 string，供 platform.trackingEvent 使用
+ * （trackingEvent 的 params 值要求 string，desktop 端经 IPC JSON 序列化）。
+ */
+export function stringifyProps(props: Record<string, string | number | boolean>): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const key of Object.keys(props)) {
+    result[key] = String(props[key])
+  }
+  return result
+}
+
+/**
+ * 蒜宝埋点统一入口。门控：全局开关 allowReportingAndTracking === false 时不上报
+ * （arch §15.3「继续遵循应用统计同意开关」；A 区偏好无单独的 per-suanbao 埋点开关）。
+ * 数据最小化：props 仅含标量（动作ID/平台/错误码/耗时/入口），
+ * 不含 prompt、消息正文、文件内容、经纬度、城市、待办/提醒/日程标题、日历详情、文件路径、会议链接。
+ * TODO(埋点阶段): 按 arch §15.3 定义事件词汇表（受控 name 枚举），本轮 name 暂为 string 占位。
+ */
+export async function trackSuanbao(name: string, props: Record<string, string | number | boolean>): Promise<void> {
+  const settings = await platform.getSettings()
+  if (settings.allowReportingAndTracking === false) return
+  platform.trackingEvent(name, stringifyProps(props))
+}
+
+/**
+ * 删除全部本机蒜宝数据（arch §16 / §19.1）：清当前账户 repository 的全部业务实体
+ * （Todo/Reminder/Pomodoro/Calendar/Operation）。accountKey 取自 suanbaoStore（runtime 同源）。
+ * 审计埋点 data_cleared 仅记录「清除发生」这一事实，不含被清内容，受门控。
+ * 不动 A 区偏好（用户偏好保留），不动平台文件。
+ */
+export async function clearSuanbaoData(): Promise<void> {
+  const accountKey = suanbaoStore.getState().accountKey
+  await getSuanbaoRepository(accountKey).clearAll()
+  await trackSuanbao('data_cleared', { cleared_at: String(Date.now()) })
+}
