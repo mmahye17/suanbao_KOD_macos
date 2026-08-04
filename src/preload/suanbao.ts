@@ -1,5 +1,10 @@
 import { SUANBAO_IPC_CHANNELS } from '@shared/suanbao-ipc'
-import type { SuanbaoCommand, SuanbaoPetWindowApi, SuanbaoViewModel } from '@shared/types/suanbao'
+import {
+  type SuanbaoCommand,
+  type SuanbaoPetWindowApi,
+  type SuanbaoViewModel,
+  suanbaoViewModelSchema,
+} from '@shared/types/suanbao'
 import { contextBridge, ipcRenderer } from 'electron'
 
 function onValidatedEvent<T>(channel: string, listener: (value: T) => void): () => void {
@@ -18,7 +23,10 @@ const api: SuanbaoPetWindowApi = {
   hide: () => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.hide),
   openMainWindow: () => ipcRenderer.invoke(SUANBAO_IPC_CHANNELS.openMainWindow),
   onViewModelChanged: (listener: (viewModel: SuanbaoViewModel) => void) =>
-    onValidatedEvent(SUANBAO_IPC_CHANNELS.viewModelChanged, listener),
+    onValidatedEvent<unknown>(SUANBAO_IPC_CHANNELS.viewModelChanged, (value) => {
+      const parsed = suanbaoViewModelSchema.safeParse(value)
+      if (parsed.success) listener(parsed.data)
+    }),
   onNotificationClicked: (listener: (entityId: string) => void) =>
     onValidatedEvent(SUANBAO_IPC_CHANNELS.notificationClicked, listener),
 }

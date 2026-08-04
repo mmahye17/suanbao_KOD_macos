@@ -49,8 +49,7 @@ export class SuanbaoAssistantService {
   }
 
   async close() {
-    this.scheduler?.stop()
-    await this.repository.close()
+    await this.scheduler?.stop()
   }
 
   async prepareConfirmation(confirmation: SuanbaoConfirmation) {
@@ -131,6 +130,30 @@ export class SuanbaoAssistantService {
     return { operation, entity, message: this.successMessage(operation.action) }
   }
 
+  async create(action: SuanbaoAction) {
+    const entity = await this.createEntity(action)
+    switch (action.kind) {
+      case 'create-todo':
+        await this.repository.saveTodo(entity as SuanbaoTodoItem)
+        break
+      case 'create-reminder':
+        await this.repository.saveReminder(entity as SuanbaoReminder)
+        await this.scheduler?.reconcile()
+        break
+      case 'start-pomodoro':
+        await this.repository.savePomodoro(entity as SuanbaoPomodoroSession)
+        break
+      case 'create-local-calendar-event':
+        await this.repository.saveCalendarEvent(entity as SuanbaoLocalCalendarEvent)
+        break
+    }
+    return entity
+  }
+
+  listPomodoros() {
+    return this.repository.listPomodoros()
+  }
+
   private async createEntity(action: SuanbaoAction) {
     const now = this.now()
     switch (action.kind) {
@@ -162,7 +185,9 @@ export class SuanbaoAssistantService {
         return createPomodoroSession(createId(), action.durationMs, now)
       }
       case 'create-local-calendar-event':
-        if (action.endsAt <= action.startsAt) throw new Error('SUANBAO_INVALID_CALENDAR_RANGE')
+        if (!Number.isFinite(action.startsAt) || !Number.isFinite(action.endsAt) || action.endsAt <= action.startsAt) {
+          throw new Error('SUANBAO_INVALID_CALENDAR_RANGE')
+        }
         return {
           id: createId(),
           title: assertTitle(action.title),
@@ -243,10 +268,16 @@ export class SuanbaoAssistantService {
   ) {
     const reminder = await this.repository.getReminder(id)
     if (!reminder) throw new Error('SUANBAO_REMINDER_NOT_FOUND')
+    const triggerAt = changes.triggerAt ?? reminder.triggerAt
+    const timezone = changes.timezone ?? reminder.timezone
+    if (!Number.isFinite(triggerAt)) throw new Error('SUANBAO_INVALID_REMINDER_TIME')
+    if (!timezone.trim()) throw new Error('SUANBAO_INVALID_TIMEZONE')
     const updated: SuanbaoReminder = {
       ...reminder,
       ...changes,
       title: changes.title === undefined ? reminder.title : assertTitle(changes.title),
+      triggerAt,
+      timezone,
       status: 'scheduled',
       firedAt: undefined,
       updatedAt: this.now(),
@@ -288,7 +319,9 @@ export class SuanbaoAssistantService {
     if (!event) throw new Error('SUANBAO_CALENDAR_EVENT_NOT_FOUND')
     const updated = { ...event, ...changes, updatedAt: this.now() }
     updated.title = assertTitle(updated.title)
-    if (updated.endsAt <= updated.startsAt) throw new Error('SUANBAO_INVALID_CALENDAR_RANGE')
+    if (!Number.isFinite(updated.startsAt) || !Number.isFinite(updated.endsAt) || updated.endsAt <= updated.startsAt) {
+      throw new Error('SUANBAO_INVALID_CALENDAR_RANGE')
+    }
     await this.repository.saveCalendarEvent(updated)
     return updated
   }
@@ -303,16 +336,16 @@ export class SuanbaoAssistantService {
     if (recovered.revision !== active.revision) await this.repository.savePomodoro(recovered)
     return recovered
   }
-  async pausePomodoro() {
+  pausePomodoro() {
     return this.changeActivePomodoro((session) => pausePomodoro(session, this.now()))
   }
-  async resumePomodoro() {
+  resumePomodoro() {
     return this.changeActivePomodoro((session) => resumePomodoro(session, this.now()))
   }
-  async skipPomodoro() {
+  skipPomodoro() {
     return this.changeActivePomodoro((session) => advancePomodoro(session, this.now()))
   }
-  async stopPomodoro() {
+  stopPomodoro() {
     return this.changeActivePomodoro((session) => stopPomodoro(session, this.now()))
   }
   private async changeActivePomodoro(change: (session: SuanbaoPomodoroSession) => SuanbaoPomodoroSession) {

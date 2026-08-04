@@ -180,7 +180,7 @@ suanbao-preferences-v1:<accountKey>
 - 新建聊天；
 - 问候和摸头离线台词。
 
-待办、提醒和番茄钟只生成 `SuanbaoConfirmation`，尚未写入 repository 或真正启动。
+> 2026-08-04 第三批更新：下述“只生成确认草案”的历史描述已经失效。当前已实现账户级 `SuanbaoRepository`、确认事务执行、待办/提醒/番茄钟/本地日程持久化，以及设置页中的四类管理入口。应用启动会恢复待确认操作和活动番茄，前台 reminder scheduler 会协调到期记录；Electron 独立窗口也能通过受限 IPC 按 operation ID 确认或取消。完整原生后台通知、移动 SQLite/本地通知和 DST 重复提醒仍属于后续平台增强。
 
 ### 3.6 独立蒜宝短会话骨架
 

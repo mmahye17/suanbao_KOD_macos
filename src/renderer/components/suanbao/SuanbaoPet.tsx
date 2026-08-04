@@ -464,6 +464,16 @@ function SuanbaoPetInner() {
                 className="suanbao-menu-item"
                 onClick={() => {
                   trackSuanbaoAction('settings')
+                  void router.navigate({ to: '/settings/suanbao' })
+                  setOpened(false)
+                }}
+              >
+                <IconSettings size={18} /> 任务与日程
+              </UnstyledButton>
+              <UnstyledButton
+                className="suanbao-menu-item"
+                onClick={() => {
+                  trackSuanbaoAction('settings')
                   openSuanbaoSettings()
                 }}
               >

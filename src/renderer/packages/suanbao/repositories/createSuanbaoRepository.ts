@@ -14,9 +14,9 @@ export function getSuanbaoRepository(accountKey: string): SuanbaoRepository {
   return repository
 }
 
-export async function closeSuanbaoRepository(accountKey: string) {
+export async function closeSuanbaoRepository(accountKey: string, expectedRepository?: SuanbaoRepository) {
   const repository = repositories.get(accountKey)
-  if (!repository) return
-  await repository.close()
+  if (!repository || (expectedRepository && repository !== expectedRepository)) return
   repositories.delete(accountKey)
+  await repository.close()
 }

@@ -49,7 +49,7 @@ export class SuanbaoWindowManager {
     return {
       overlay: 'desktop-window',
       notifications: true,
-      backgroundScheduling: true,
+      backgroundScheduling: 'foreground-only',
       geolocation: false,
       systemCalendarRead: false,
     }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isSuanbaoRouteId,
-  isValidSuanbaoCommand,
+  isValidSuanbaoDomainCommand,
   isValidSuanbaoPosition,
   MAX_SUANBAO_INPUT_LENGTH,
 } from './suanbao'
@@ -19,11 +19,11 @@ describe('Suanbao shared contracts', () => {
   })
 
   it('bounds message payloads and operation ids', () => {
-    expect(isValidSuanbaoCommand({ type: 'message', input: '你好', locale: 'zh-Hans' })).toBe(true)
+    expect(isValidSuanbaoDomainCommand({ type: 'message', input: '你好', locale: 'zh-Hans' })).toBe(true)
     expect(
-      isValidSuanbaoCommand({ type: 'message', input: 'x'.repeat(MAX_SUANBAO_INPUT_LENGTH + 1), locale: 'en' })
+      isValidSuanbaoDomainCommand({ type: 'message', input: 'x'.repeat(MAX_SUANBAO_INPUT_LENGTH + 1), locale: 'en' })
     ).toBe(false)
-    expect(isValidSuanbaoCommand({ type: 'cancel', operationId: '../unsafe' })).toBe(false)
-    expect(isValidSuanbaoCommand({ type: 'cancel', operationId: 'operation_123' })).toBe(true)
+    expect(isValidSuanbaoDomainCommand({ type: 'cancel', operationId: '../unsafe' })).toBe(false)
+    expect(isValidSuanbaoDomainCommand({ type: 'cancel', operationId: 'operation_123' })).toBe(true)
   })
 })

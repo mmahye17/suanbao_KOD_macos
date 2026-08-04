@@ -6,27 +6,22 @@ import type {
 } from '@shared/types/suanbao'
 import { useLocation } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { suanbaoRuntime } from '@/packages/suanbao/runtime'
 import platform from '@/platform'
 import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
 import { useSession } from '@/stores/chatStore'
 import { useCurrentTaskId, useTaskSessionRecord } from '@/stores/taskSessionStore'
 import { SuanbaoDesktopBridgeHost } from './SuanbaoDesktopBridgeHost'
-import {
-  cancelSuanbaoAction,
-  continueRecentChat,
-  openSuanbaoSettings,
-  startNewChat,
-  startSuanbaoMessage,
-} from './suanbaoActions'
+import { continueRecentChat, openSuanbaoSettings, startNewChat, startSuanbaoMessage } from './suanbaoActions'
 import { mapMessagesToSuanbaoState } from './suanbaoState'
 import { useSuanbaoStore } from './suanbaoStore'
 
 const IN_APP_CAPABILITIES: SuanbaoPlatformCapabilities = {
   overlay: 'in-app',
   notifications: false,
-  backgroundScheduling: false,
+  backgroundScheduling: 'foreground-only',
   geolocation: typeof navigator !== 'undefined' && 'geolocation' in navigator,
   systemCalendarRead: false,
 }
@@ -50,6 +45,11 @@ export function SuanbaoRuntimeHost() {
   const enabled = useSuanbaoStore((state) => state.enabled)
   const hidden = useSuanbaoStore((state) => state.hidden)
   const animation = useSuanbaoStore((state) => state.animation)
+  const accountKey = useSuanbaoStore((state) => state.accountKey)
+  const runtimeSnapshot = useSyncExternalStore(
+    suanbaoRuntime.subscribe.bind(suanbaoRuntime),
+    suanbaoRuntime.getSnapshot
+  )
   const persistedSessionId = useAtomValue(currentSessionIdAtom)
   const routeSessionId = location.pathname.startsWith('/session/') ? location.pathname.slice('/session/'.length) : null
   const chatSessionId = routeSessionId || persistedSessionId
@@ -62,6 +62,22 @@ export function SuanbaoRuntimeHost() {
   const petState = mapMessagesToSuanbaoState(messages)
   const [bubbleOpen, setBubbleOpen] = useState(false)
   const [capabilities, setCapabilities] = useState<SuanbaoPlatformCapabilities>(IN_APP_CAPABILITIES)
+
+  useEffect(() => {
+    void suanbaoRuntime.switchAccount(accountKey)
+    const reconcile = () => void suanbaoRuntime.reconcile()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reconcile()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    const cancelFocus = platform.onWindowFocused(reconcile)
+    const cancelShow = platform.onWindowShow(reconcile)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      cancelFocus()
+      cancelShow()
+    }
+  }, [accountKey])
 
   useEffect(() => {
     let active = true
@@ -94,11 +110,13 @@ export function SuanbaoRuntimeHost() {
       revision: updatedAt,
       petState,
       bubbleOpen,
-      message: STATUS_COPY[petState],
-      connection: 'online',
+      message: runtimeSnapshot.operation?.message || STATUS_COPY[petState],
+      operationId: runtimeSnapshot.operation?.operationId,
+      operation: runtimeSnapshot.operation,
+      connection: runtimeSnapshot.initialized ? 'online' : 'connecting',
       updatedAt,
     }
-  }, [bubbleOpen, petState])
+  }, [bubbleOpen, petState, runtimeSnapshot])
 
   const bootstrap = useMemo<SuanbaoBootstrap>(
     () => ({
@@ -118,41 +136,41 @@ export function SuanbaoRuntimeHost() {
     [animation, capabilities, enabled, hidden, viewModel]
   )
 
-  const onCommand = useCallback(
-    (request: SuanbaoHostRequest) => {
-      if (request.kind === 'confirm-operation') return
-      if (request.kind === 'cancel-operation') {
-        void cancelSuanbaoAction({ pathname: location.pathname, chatSessionId })
-        return
-      }
+  const onCommand = useCallback((request: SuanbaoHostRequest) => {
+    if (request.kind === 'confirm-operation') {
+      void suanbaoRuntime.confirm(request.operationId)
+      return
+    }
+    if (request.kind === 'cancel-operation') {
+      void suanbaoRuntime.cancel(request.operationId)
+      return
+    }
 
-      const command = request.command
-      if (command.type === 'open-bubble') {
-        setBubbleOpen(true)
-        return
-      }
-      if (command.type === 'close-bubble') {
-        setBubbleOpen(false)
-        return
-      }
-      if (command.type === 'send-message') {
-        void startSuanbaoMessage(command.input)
-        return
-      }
-      if (command.route === 'new-chat') {
-        void startNewChat()
-      } else if (command.route === 'recent-chat') {
-        void continueRecentChat()
-      } else if (command.route === 'suanbao-settings') {
-        openSuanbaoSettings()
-      } else if (command.route === 'image-generation') {
-        void router.navigate({ to: '/image-creator' })
-      } else if (command.route === 'task') {
-        void router.navigate({ to: '/task' })
-      }
-    },
-    [chatSessionId, location.pathname]
-  )
+    const command = request.command
+    if (command.type === 'open-bubble') {
+      setBubbleOpen(true)
+      return
+    }
+    if (command.type === 'close-bubble') {
+      setBubbleOpen(false)
+      return
+    }
+    if (command.type === 'send-message') {
+      void startSuanbaoMessage(command.input)
+      return
+    }
+    if (command.route === 'new-chat') {
+      void startNewChat()
+    } else if (command.route === 'recent-chat') {
+      void continueRecentChat()
+    } else if (command.route === 'suanbao-settings') {
+      openSuanbaoSettings()
+    } else if (command.route === 'image-creator') {
+      void router.navigate({ to: '/image-creator' })
+    } else if (command.route === 'task-home') {
+      void router.navigate({ to: '/task' })
+    }
+  }, [])
 
   return (
     <SuanbaoDesktopBridgeHost

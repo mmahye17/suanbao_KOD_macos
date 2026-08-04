@@ -1,6 +1,7 @@
 import { Button, SegmentedControl, Stack, Switch, Text, Title } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { SuanbaoManagement } from '@/components/suanbao/SuanbaoManagement'
 import { useSuanbaoStore } from '@/components/suanbao/suanbaoStore'
 
 export const Route = createFileRoute('/settings/suanbao')({
@@ -70,6 +71,7 @@ export function RouteComponent() {
           ]}
         />
       </Stack>
+      <SuanbaoManagement />
       <Button variant="light" onClick={restore}>
         {t('Restore defaults and position')}
       </Button>

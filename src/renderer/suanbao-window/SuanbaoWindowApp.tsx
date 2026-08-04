@@ -121,7 +121,41 @@ export function SuanbaoWindowApp() {
     >
       {bubbleOpen && (
         <section className="suanbao-bubble" aria-live="polite">
-          <p>{viewModel.message || suanbaoWindowCopy.greeting}</p>
+          {viewModel.operation?.phase === 'awaiting-confirmation' ? (
+            <>
+              <strong>{viewModel.operation.title}</strong>
+              <dl>
+                {viewModel.operation.fields?.map((field) => (
+                  <div key={`${field.label}-${field.value}`}>
+                    <dt>{field.label}</dt>
+                    <dd>{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="suanbao-bubble-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const operationId = viewModel.operation?.operationId
+                    if (operationId) void window.suanbaoAPI.cancelOperation(operationId)
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const operationId = viewModel.operation?.operationId
+                    if (operationId) void window.suanbaoAPI.confirmOperation(operationId)
+                  }}
+                >
+                  确认
+                </button>
+              </div>
+            </>
+          ) : (
+            <p>{viewModel.message || suanbaoWindowCopy.greeting}</p>
+          )}
           <div className="suanbao-bubble-actions">
             <button type="button" onClick={() => void window.suanbaoAPI.openMainWindow()}>
               {suanbaoWindowCopy.openKod}

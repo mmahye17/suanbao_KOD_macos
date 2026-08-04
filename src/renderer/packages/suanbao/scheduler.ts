@@ -42,12 +42,13 @@ export class SuanbaoReminderScheduler {
     await this.reconcile()
   }
 
-  stop() {
+  async stop() {
     this.started = false
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibilityChange)
     if (typeof window !== 'undefined') window.removeEventListener('focus', this.onFocus)
+    await this.reconciling?.catch(() => undefined)
   }
 
   reconcile(): Promise<void> {

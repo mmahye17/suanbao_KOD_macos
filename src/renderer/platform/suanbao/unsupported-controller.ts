@@ -8,7 +8,7 @@ export class UnsupportedSuanbaoPlatformController implements SuanbaoPlatformCont
     return Promise.resolve({
       overlay: 'in-app',
       notifications: false,
-      backgroundScheduling: false,
+      backgroundScheduling: 'foreground-only',
       geolocation: typeof navigator !== 'undefined' && 'geolocation' in navigator,
       systemCalendarRead: false,
       reason: this.reason,
