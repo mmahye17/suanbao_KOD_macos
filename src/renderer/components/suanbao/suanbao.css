@@ -209,6 +209,10 @@
 .suanbao-animation-reduced {
   animation: suanbao-float 5s ease-in-out infinite;
 }
+.suanbao-animation-off,
+.suanbao-animation-off .suanbao-sprout {
+  animation: none !important;
+}
 @keyframes suanbao-float {
   0%,
   100% {

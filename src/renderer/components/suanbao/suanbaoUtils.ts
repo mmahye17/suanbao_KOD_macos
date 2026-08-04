@@ -1,7 +1,6 @@
-export interface SuanbaoPosition {
-  x: number
-  y: number
-}
+import type { SuanbaoPosition } from '@shared/types/suanbao'
+
+export type { SuanbaoPosition } from '@shared/types/suanbao'
 
 export interface SuanbaoBounds {
   width: number
@@ -42,6 +41,5 @@ export function pixelsToNormalized(position: SuanbaoPosition, bounds: SuanbaoBou
 }
 
 export function shouldShowSuanbao(pathname: string, settingsModalOpen: boolean): boolean {
-  if (settingsModalOpen || pathname.startsWith('/settings')) return false
-  return !pathname.startsWith('/guide') && pathname !== '/about'
+  return !settingsModalOpen && !pathname.startsWith('/settings')
 }

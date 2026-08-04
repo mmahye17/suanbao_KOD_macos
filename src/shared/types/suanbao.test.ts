@@ -1,49 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import {
-  suanbaoCommandSchema,
-  suanbaoHostRequestSchema,
-  suanbaoPlacementSchema,
-  suanbaoViewModelSchema,
+  isSuanbaoRouteId,
+  isValidSuanbaoCommand,
+  isValidSuanbaoPosition,
+  MAX_SUANBAO_INPUT_LENGTH,
 } from './suanbao'
 
-describe('suanbao IPC schemas', () => {
-  it('accepts only allowlisted navigation routes', () => {
-    expect(suanbaoCommandSchema.safeParse({ type: 'navigate', route: 'image-generation' }).success).toBe(true)
-    expect(suanbaoCommandSchema.safeParse({ type: 'navigate', route: 'https://example.com' }).success).toBe(false)
+describe('Suanbao shared contracts', () => {
+  it('accepts controlled routes only', () => {
+    expect(isSuanbaoRouteId('image-creator')).toBe(true)
+    expect(isSuanbaoRouteId('/settings/provider')).toBe(false)
   })
 
-  it('rejects non-finite placement coordinates and oversized input', () => {
+  it('rejects invalid positions', () => {
+    expect(isValidSuanbaoPosition({ x: 0.5, y: 1 })).toBe(true)
+    expect(isValidSuanbaoPosition({ x: Number.NaN, y: 0 })).toBe(false)
+    expect(isValidSuanbaoPosition({ x: -1, y: 0 })).toBe(false)
+  })
+
+  it('bounds message payloads and operation ids', () => {
+    expect(isValidSuanbaoCommand({ type: 'message', input: '你好', locale: 'zh-Hans' })).toBe(true)
     expect(
-      suanbaoPlacementSchema.safeParse({
-        mode: 'desktop',
-        x: Number.NaN,
-        y: 0,
-        anchor: 'free',
-        locked: false,
-      }).success
+      isValidSuanbaoCommand({ type: 'message', input: 'x'.repeat(MAX_SUANBAO_INPUT_LENGTH + 1), locale: 'en' })
     ).toBe(false)
-    expect(suanbaoCommandSchema.safeParse({ type: 'send-message', input: 'x'.repeat(2001) }).success).toBe(false)
-  })
-
-  it('requires UUID operation and request IDs', () => {
-    expect(
-      suanbaoHostRequestSchema.safeParse({
-        kind: 'cancel-operation',
-        requestId: 'not-a-uuid',
-        operationId: 'not-an-operation-id',
-      }).success
-    ).toBe(false)
-  })
-
-  it('rejects unknown cross-window view-model fields', () => {
-    const parsed = suanbaoViewModelSchema.safeParse({
-      revision: 1,
-      petState: 'idle',
-      bubbleOpen: false,
-      connection: 'online',
-      updatedAt: Date.now(),
-      cancel: () => undefined,
-    })
-    expect(parsed.success).toBe(false)
+    expect(isValidSuanbaoCommand({ type: 'cancel', operationId: '../unsafe' })).toBe(false)
+    expect(isValidSuanbaoCommand({ type: 'cancel', operationId: 'operation_123' })).toBe(true)
   })
 })

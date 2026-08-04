@@ -12,6 +12,9 @@ export function RouteComponent() {
   const enabled = useSuanbaoStore((state) => state.enabled)
   const hidden = useSuanbaoStore((state) => state.hidden)
   const animation = useSuanbaoStore((state) => state.animation)
+  const activeMode = useSuanbaoStore((state) => state.activeMode)
+  const soundEnabled = useSuanbaoStore((state) => state.soundEnabled)
+  const locked = useSuanbaoStore((state) => state.locked)
   const setPreferences = useSuanbaoStore((state) => state.setPreferences)
   const restore = useSuanbaoStore((state) => state.restore)
 
@@ -27,7 +30,7 @@ export function RouteComponent() {
       </div>
       <Switch
         label={t('Enable Suanbao')}
-        description={t('Show Suanbao on Home, Chat, and Task pages.')}
+        description={t('Show Suanbao across KOD pages, including image generation.')}
         checked={enabled}
         onChange={(event) => setPreferences({ enabled: event.currentTarget.checked })}
       />
@@ -36,6 +39,24 @@ export function RouteComponent() {
         description={t('Use this to temporarily hide Suanbao without disabling it.')}
         checked={hidden}
         onChange={(event) => setPreferences({ hidden: event.currentTarget.checked })}
+      />
+      <Switch
+        label={t('Active mode')}
+        description={t('Allow occasional animations and proactive bubbles outside do-not-disturb hours.')}
+        checked={activeMode}
+        onChange={(event) => setPreferences({ activeMode: event.currentTarget.checked })}
+      />
+      <Switch
+        label={t('Sound')}
+        description={t('Play Suanbao interaction sounds. Sound is off by default.')}
+        checked={soundEnabled}
+        onChange={(event) => setPreferences({ soundEnabled: event.currentTarget.checked })}
+      />
+      <Switch
+        label={t('Lock position')}
+        description={t('Prevent dragging Suanbao until this option is turned off.')}
+        checked={locked}
+        onChange={(event) => setPreferences({ locked: event.currentTarget.checked })}
       />
       <Stack gap="xs">
         <Text fw={600}>{t('Animation')}</Text>

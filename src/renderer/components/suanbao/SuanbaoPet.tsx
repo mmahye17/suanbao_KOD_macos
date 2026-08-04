@@ -1,10 +1,15 @@
 import { Button, Popover, Stack, Text, Textarea, UnstyledButton } from '@mantine/core'
+import type { SuanbaoConfirmation } from '@shared/types/suanbao'
 import { IconEyeOff, IconMessagePlus, IconPlayerStop, IconSettings, IconSparkles } from '@tabler/icons-react'
 import { useLocation } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { suanbaoConversationService } from '@/packages/suanbao/conversation'
+import { parseLocalSuanbaoIntent } from '@/packages/suanbao/intent'
+import { getSuanbaoAssistantService, prepareSuanbaoConfirmation } from '@/packages/suanbao/runtime'
+import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
 import { useSession } from '@/stores/chatStore'
 import { useCurrentTaskId, useTaskSessionRecord } from '@/stores/taskSessionStore'
@@ -14,9 +19,9 @@ import {
   openSuanbaoSettings,
   type SuanbaoPromptKind,
   startNewChat,
-  startSuanbaoPrompt,
 } from './suanbaoActions'
 import { trackSuanbaoAction } from './suanbaoAnalytics'
+import { buildSuanbaoPrompt } from './suanbaoPrompts'
 import { isSuanbaoBusyState, mapMessagesToSuanbaoState, type SuanbaoVisualState } from './suanbaoState'
 import { useSuanbaoStore } from './suanbaoStore'
 import { normalizedToPixels, pixelsToNormalized, shouldShowSuanbao } from './suanbaoUtils'
@@ -55,6 +60,7 @@ function SuanbaoPetInner() {
   const hidden = useSuanbaoStore((state) => state.hidden)
   const animation = useSuanbaoStore((state) => state.animation)
   const position = useSuanbaoStore((state) => state.position)
+  const locked = useSuanbaoStore((state) => state.locked)
   const setPreferences = useSuanbaoStore((state) => state.setPreferences)
   const persistedSessionId = useAtomValue(currentSessionIdAtom)
   const routeSessionId = location.pathname.startsWith('/session/') ? location.pathname.slice('/session/'.length) : null
@@ -81,23 +87,30 @@ function SuanbaoPetInner() {
   const previousStateRef = useRef(routeState)
   const terminalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [visualState, setVisualState] = useState(routeState)
+  const pixelPositionRef = useRef({ x: 12, y: 12 })
   const [pixelPosition, setPixelPosition] = useState({ x: 12, y: 12 })
+  const [positionReady, setPositionReady] = useState(false)
   const [opened, setOpened] = useState(false)
   const [promptKind, setPromptKind] = useState<SuanbaoPromptKind | null>(null)
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [reply, setReply] = useState('')
+  const [confirmation, setConfirmation] = useState<SuanbaoConfirmation | null>(null)
+  const [operationId, setOperationId] = useState<string | null>(null)
 
   useEffect(() => {
-    const measure = () =>
-      setPixelPosition(
-        normalizedToPixels(position, {
-          width: window.innerWidth,
-          height: window.innerHeight,
-          petWidth: rootRef.current?.offsetWidth ?? 94,
-          petHeight: rootRef.current?.offsetHeight ?? 116,
-        })
-      )
+    const measure = () => {
+      const next = normalizedToPixels(position, {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        petWidth: rootRef.current?.offsetWidth ?? 94,
+        petHeight: rootRef.current?.offsetHeight ?? 116,
+      })
+      pixelPositionRef.current = next
+      setPixelPosition(next)
+      setPositionReady(true)
+    }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
@@ -137,7 +150,7 @@ function SuanbaoPetInner() {
   const cleanupPointer = (event: ReactPointerEvent<HTMLDivElement>, persistPosition: boolean) => {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
-    if (persistPosition) setPreferences({ position: pixelsToNormalized(pixelPosition, bounds()) })
+    if (persistPosition) setPreferences({ position: pixelsToNormalized(pixelPositionRef.current, bounds()) })
     dragRef.current = null
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId)
@@ -145,6 +158,7 @@ function SuanbaoPetInner() {
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (
+      locked ||
       event.button !== 0 ||
       (event.target !== event.currentTarget && !(event.target as Element).closest('.suanbao-garlic, .suanbao-name'))
     )
@@ -164,8 +178,12 @@ function SuanbaoPetInner() {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     drag.moved = drag.moved || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 3
-    const next = { x: event.clientX - drag.dx, y: event.clientY - drag.dy }
-    setPixelPosition(normalizedToPixels(pixelsToNormalized(next, bounds()), bounds()))
+    const next = normalizedToPixels(
+      pixelsToNormalized({ x: event.clientX - drag.dx, y: event.clientY - drag.dy }, bounds()),
+      bounds()
+    )
+    pixelPositionRef.current = next
+    setPixelPosition(next)
   }
 
   const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -173,7 +191,11 @@ function SuanbaoPetInner() {
     if (!drag || drag.pointerId !== event.pointerId) return
     cleanupPointer(event, true)
     if (!drag.moved) {
-      clickTimerRef.current = setTimeout(() => setOpened((value) => !value), 220)
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null
+        setOpened((value) => !value)
+      }, 220)
     }
   }
 
@@ -185,15 +207,45 @@ function SuanbaoPetInner() {
     void continueRecentChat()
   }
 
+  const navigateFromSuanbao = async (route: string) => {
+    if (route === 'image-creator') await router.navigate({ to: '/image-creator' })
+    else if (route === 'task-home') await router.navigate({ to: '/task' })
+    else if (route === 'suanbao-settings') openSuanbaoSettings()
+    else if (route === 'new-chat') await startNewChat()
+  }
+
   const runPrompt = async () => {
-    if (!promptKind || submitting || busy || !input.trim()) return
+    if (submitting || busy || !input.trim()) return
+    const text = input.trim()
     try {
       setSubmitting(true)
       setError('')
-      trackSuanbaoAction(promptKind === 'explain-code' ? 'explain_code' : 'analyze_error')
-      await startSuanbaoPrompt(promptKind, input)
-      setOpened(false)
-      setPromptKind(null)
+      setReply('')
+      setConfirmation(null)
+      const localIntent = parseLocalSuanbaoIntent(text)
+      if (localIntent?.type === 'navigate') {
+        await navigateFromSuanbao(localIntent.route)
+        setOpened(false)
+      } else if (localIntent?.type === 'set-visibility') {
+        setPreferences({ hidden: localIntent.hidden })
+      } else if (localIntent?.type === 'set-locked') {
+        setPreferences({ locked: localIntent.locked })
+        setReply(String(localIntent.locked ? t('Suanbao position locked') : t('Suanbao position unlocked')))
+      } else if (localIntent?.type === 'offline-reply') {
+        setReply(localIntent.text)
+      } else if (localIntent?.type === 'confirmation') {
+        await prepareSuanbaoConfirmation(localIntent.confirmation)
+        setConfirmation(localIntent.confirmation)
+      } else if (promptKind) {
+        trackSuanbaoAction(promptKind === 'explain-code' ? 'explain_code' : 'analyze_error')
+        const result = await suanbaoConversationService.send(buildSuanbaoPrompt(promptKind, text))
+        setOperationId(result.operationId)
+        setReply(result.text)
+      } else {
+        const result = await suanbaoConversationService.send(text)
+        setOperationId(result.operationId)
+        setReply(result.text)
+      }
       setInput('')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -208,7 +260,11 @@ function SuanbaoPetInner() {
         <div
           ref={rootRef}
           className="suanbao-root"
-          style={{ transform: `translate3d(${pixelPosition.x}px, ${pixelPosition.y}px, 0)` }}
+          style={{
+            transform: `translate3d(${pixelPosition.x}px, ${pixelPosition.y}px, 0)`,
+            visibility: positionReady ? 'visible' : 'hidden',
+            cursor: locked ? 'pointer' : undefined,
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -219,7 +275,8 @@ function SuanbaoPetInner() {
           onDoubleClick={openFullChat}
           role="button"
           tabIndex={0}
-          aria-label={t('Open Suanbao assistant') || 'Open Suanbao assistant'}
+          aria-label={`${t('Open Suanbao assistant') || 'Open Suanbao assistant'}: ${visualState}`}
+          aria-live="polite"
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') setOpened((value) => !value)
           }}
@@ -236,7 +293,52 @@ function SuanbaoPetInner() {
               {t('Your quick coding companion')}
             </Text>
           </div>
-          {promptKind ? (
+          {confirmation ? (
+            <Stack gap="xs">
+              <Text fw={600}>{confirmation.title}</Text>
+              {confirmation.fields.map((field) => (
+                <Text key={field.label} size="sm">
+                  {field.label}: {field.value}
+                </Text>
+              ))}
+              <Text size="xs" c="dimmed">
+                {t('Confirm before Suanbao performs this action.')}
+              </Text>
+              <div className="flex gap-2">
+                <Button
+                  variant="subtle"
+                  disabled={submitting}
+                  onClick={() => {
+                    setSubmitting(true)
+                    void getSuanbaoAssistantService()
+                      .cancelConfirmation(confirmation.operationId)
+                      .then(() => setConfirmation(null))
+                      .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+                      .finally(() => setSubmitting(false))
+                  }}
+                >
+                  {t('Cancel')}
+                </Button>
+                <Button
+                  loading={submitting}
+                  onClick={() => {
+                    setSubmitting(true)
+                    setError('')
+                    void getSuanbaoAssistantService()
+                      .confirm(confirmation.operationId)
+                      .then((result) => {
+                        setReply(result.message)
+                        setConfirmation(null)
+                      })
+                      .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+                      .finally(() => setSubmitting(false))
+                  }}
+                >
+                  {t('Confirm')}
+                </Button>
+              </div>
+            </Stack>
+          ) : promptKind ? (
             <>
               <Textarea
                 autoFocus
@@ -249,13 +351,21 @@ function SuanbaoPetInner() {
                   t(promptKind === 'explain-code' ? 'Paste code to explain…' : 'Paste an error message…') || undefined
                 }
               />
+              {reply && <Text size="sm">{reply}</Text>}
               {error && (
                 <Text size="xs" c="red">
                   {error}
                 </Text>
               )}
               <div className="flex gap-2">
-                <Button variant="subtle" onClick={() => setPromptKind(null)}>
+                <Button
+                  variant="subtle"
+                  onClick={() => {
+                    setPromptKind(null)
+                    setReply('')
+                    setError('')
+                  }}
+                >
                   {t('Back')}
                 </Button>
                 <Button loading={submitting} disabled={!input.trim() || busy} onClick={runPrompt}>
@@ -265,6 +375,36 @@ function SuanbaoPetInner() {
             </>
           ) : (
             <>
+              {reply && <Text size="sm">{reply}</Text>}
+              {error && (
+                <Text size="xs" c="red">
+                  {error}
+                </Text>
+              )}
+              <Textarea
+                autosize
+                minRows={2}
+                maxRows={5}
+                value={input}
+                onChange={(event) => setInput(event.currentTarget.value)}
+                placeholder={t('Talk to Suanbao…') || undefined}
+              />
+              <div className="flex gap-2">
+                <Button loading={submitting} disabled={!input.trim()} onClick={runPrompt}>
+                  {t('Send')}
+                </Button>
+                {operationId && submitting && (
+                  <Button
+                    variant="subtle"
+                    onClick={() => {
+                      suanbaoConversationService.cancel(operationId)
+                      setOperationId(null)
+                    }}
+                  >
+                    {t('Cancel')}
+                  </Button>
+                )}
+              </div>
               <UnstyledButton
                 className="suanbao-menu-item"
                 disabled={submitting || busy}
