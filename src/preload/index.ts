@@ -3,6 +3,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ElectronIPC } from 'src/shared/electron-types'
 import { SUANBAO_IPC_CHANNELS } from 'src/shared/suanbao-ipc'
+import { TINPAY_IPC_CHANNELS, tinpayNotificationSchema } from 'src/shared/tinpay'
 import type { SuanbaoHostRequest } from 'src/shared/types/suanbao'
 
 // export type Channels = 'ipc-example';
@@ -57,6 +58,19 @@ const electronHandler: ElectronIPC = {
       const listener = (_event: Electron.IpcRendererEvent, request: SuanbaoHostRequest) => callback(request)
       ipcRenderer.on(SUANBAO_IPC_CHANNELS.hostCommand, listener)
       return () => ipcRenderer.off(SUANBAO_IPC_CHANNELS.hostCommand, listener)
+    },
+  },
+  tinpay: {
+    open: (input) => ipcRenderer.invoke(TINPAY_IPC_CHANNELS.open, input),
+    close: (input) => ipcRenderer.invoke(TINPAY_IPC_CHANNELS.close, input),
+    openExternal: (input) => ipcRenderer.invoke(TINPAY_IPC_CHANNELS.openExternal, input),
+    onNotification: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, value: unknown) => {
+        const parsed = tinpayNotificationSchema.safeParse(value)
+        if (parsed.success) callback(parsed.data)
+      }
+      ipcRenderer.on(TINPAY_IPC_CHANNELS.notification, listener)
+      return () => ipcRenderer.off(TINPAY_IPC_CHANNELS.notification, listener)
     },
   },
 

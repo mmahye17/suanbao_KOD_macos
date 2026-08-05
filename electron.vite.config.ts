@@ -202,6 +202,7 @@ export default defineConfig(({ mode }) => {
           entry: {
             index: resolve(__dirname, 'src/preload/index.ts'),
             suanbao: resolve(__dirname, 'src/preload/suanbao.ts'),
+            tinpay: resolve(__dirname, 'src/preload/tinpay.ts'),
           },
         },
         sourcemap: isProduction ? 'hidden' : false, // KOD opt: disable sourcemaps in dev to save ~40% memory

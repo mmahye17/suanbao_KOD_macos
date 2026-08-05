@@ -23,7 +23,7 @@ import type { ShortcutSetting } from 'src/shared/types'
 import * as analystic from './analystic-node'
 import { AppUpdater } from './app-updater'
 import * as autoLauncher from './autoLauncher'
-import { handleDeepLink } from './deeplinks'
+import { findKodDeepLink, handleDeepLink } from './deeplinks'
 import { parseFile } from './file-parser'
 import Locale from './locales'
 import * as mcpIpc from './mcp/ipc-stdio-transport'
@@ -43,6 +43,7 @@ import {
 } from './store-node'
 import { createSuanbaoDesktopModule, type SuanbaoDesktopModule } from './suanbao'
 import { createSuanbaoTrayItems } from './suanbao/tray'
+import { createTinpayDesktopModule, type TinpayDesktopModule } from './tinpay'
 import * as windowState from './window_state'
 
 // KOD opt: Knowledge base initialized lazily on first use (saves ~300MB at startup).
@@ -105,8 +106,9 @@ function getRuntimeFlags(): RuntimeFlags {
   const useSoftwareRenderingByDefault = process.platform === 'win32' && !app.isPackaged
 
   return {
-    disableGpu:
-      forceGpu ? false : forceDisableGpu || isCI || isContainer || !hasDisplayServer || useSoftwareRenderingByDefault,
+    disableGpu: forceGpu
+      ? false
+      : forceDisableGpu || isCI || isContainer || !hasDisplayServer || useSoftwareRenderingByDefault,
     disableDevShmUsage: isCI || isContainer,
   }
 }
@@ -158,6 +160,7 @@ log.info(`📱 URL Scheme registered: ${PROTOCOL_SCHEME}://`)
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let suanbaoModule: SuanbaoDesktopModule | null = null
+let tinpayModule: TinpayDesktopModule | null = null
 const suanbaoBoundMainWindows = new WeakSet<BrowserWindow>()
 
 function syncSuanbaoFloatingVisibility() {
@@ -513,14 +516,23 @@ async function showMainWindow() {
 
 // --------- 应用管理 ---------
 
-const gotTheLock = app.isPackaged ? app.requestSingleInstanceLock() : true
+const gotTheLock = app.requestSingleInstanceLock()
+
+function dispatchDeepLink(url: string) {
+  if (!mainWindow) return
+  handleDeepLink(mainWindow, url, {
+    onTinpayResult: (sessionId) => {
+      tinpayModule?.handleDeepLinkResult(sessionId)
+    },
+  })
+}
 
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', async (event, commandLine, workingDirectory) => {
+  app.on('second-instance', async (_event, commandLine, _workingDirectory) => {
     // on windows and linux, the deep link is passed in the command line
-    const url = commandLine.find((arg) => arg.startsWith('kod://') || arg.startsWith('kod-dev://'))
+    const url = findKodDeepLink(commandLine)
 
     if (url) {
       // Deep Link 场景：总是显示并聚焦窗口
@@ -540,16 +552,16 @@ if (!gotTheLock) {
         if (mainWindow.webContents.isLoading()) {
           mainWindow.webContents.once('did-finish-load', () => {
             if (mainWindow) {
-              handleDeepLink(mainWindow, url)
+              dispatchDeepLink(url)
             }
           })
         } else {
-          handleDeepLink(mainWindow, url)
+          dispatchDeepLink(url)
         }
       }
     } else {
-      // 非 Deep Link 场景：切换显示/隐藏
-      await showOrHideWindow()
+      // 非 Deep Link 场景：始终显示并聚焦现有窗口，不切换为隐藏
+      await showMainWindow()
     }
   })
 
@@ -578,6 +590,12 @@ if (!gotTheLock) {
         loadPlacement: () => store.get('suanbao.desktop-placement'),
         savePlacement: (placement) => store.set('suanbao.desktop-placement', placement),
       })
+      tinpayModule = createTinpayDesktopModule({
+        ipcMain,
+        isPackaged: app.isPackaged,
+        dirname: __dirname,
+        getMainWindow: () => mainWindow,
+      })
       // KOD opt: Create window immediately, let KB init in background.
       // This avoids blocking the first paint on SQLite migrations (~2-5s).
       await createWindow()
@@ -593,17 +611,17 @@ if (!gotTheLock) {
       // 处理启动时的 Deep Link (Windows/Linux)
       // macOS 会通过 open-url 事件处理，不需要在这里处理
       if (process.platform !== 'darwin') {
-        const url = process.argv.find((arg) => arg.startsWith('chatbox://') || arg.startsWith('chatbox-dev://'))
+        const url = findKodDeepLink(process.argv)
         if (url && mainWindow) {
           // 确保窗口加载完成后再处理 Deep Link
           if (mainWindow.webContents.isLoading()) {
             mainWindow.webContents.once('did-finish-load', () => {
               if (mainWindow) {
-                handleDeepLink(mainWindow, url)
+                dispatchDeepLink(url)
               }
             })
           } else {
-            handleDeepLink(mainWindow, url)
+            dispatchDeepLink(url)
           }
         }
       }
@@ -638,6 +656,8 @@ if (!gotTheLock) {
         mcpIpc.closeAllTransports()
         suanbaoModule?.dispose()
         suanbaoModule = null
+        tinpayModule?.dispose()
+        tinpayModule = null
         destroyTray()
       })
       app.on('before-quit', () => {
@@ -666,11 +686,11 @@ app.on('open-url', async (_event, url) => {
     if (mainWindow.webContents.isLoading()) {
       mainWindow.webContents.once('did-finish-load', () => {
         if (mainWindow) {
-          handleDeepLink(mainWindow, url)
+          dispatchDeepLink(url)
         }
       })
     } else {
-      handleDeepLink(mainWindow, url)
+      dispatchDeepLink(url)
     }
   }
 })

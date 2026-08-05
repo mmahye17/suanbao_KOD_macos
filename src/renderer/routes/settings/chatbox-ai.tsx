@@ -6,6 +6,7 @@ import { useLanguage, useProviderSettings } from '@/stores/settingsStore'
 import { LoggedInView } from './provider/chatbox-ai/-components/LoggedInView'
 import { LoginView } from './provider/chatbox-ai/-components/LoginView'
 import { ModelManagement } from './provider/chatbox-ai/-components/ModelManagement'
+import { TinpayDemoCard } from './provider/chatbox-ai/-components/TinpayDemoCard'
 import { useAuthTokens } from './provider/chatbox-ai/-components/useAuthTokens'
 
 export const Route = createFileRoute('/settings/chatbox-ai')({
@@ -35,7 +36,10 @@ export function RouteComponent() {
   return (
     <Stack gap="xxl" p="md">
       {isLoggedIn ? (
-        <LoggedInView onLogout={clearAuthTokens} />
+        <>
+          <LoggedInView onLogout={clearAuthTokens} />
+          <TinpayDemoCard />
+        </>
       ) : (
         <LoginView language={language} saveAuthTokens={saveAuthTokens} />
       )}

@@ -1,20 +1,24 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Stack, Box, Button } from '@mantine/core'
+import { Box, Button } from '@mantine/core'
 import type { Message, ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'zustand'
 import { JK_PAGE_NAMES } from '@/analytics/jk-events'
-import { ChatboxWelcomeCard } from '@/components/common/ChatboxWelcomeCard'
+import { BalanceInsufficientToast } from '@/components/BalanceInsufficientToast'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
+import { ChatboxWelcomeCard } from '@/components/common/ChatboxWelcomeCard'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import Page from '@/components/layout/Page'
+import { RelayNoticeToast } from '@/components/RelayNoticeToast'
+import { RelayStationSelector } from '@/components/RelayStationSelector'
+import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
+import { useKodRelay } from '@/hooks/useKodRelay'
 import { useProviders } from '@/hooks/useProviders'
 import { defaultSessionsForCN, defaultSessionsForEN } from '@/packages/initial_data'
-import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import * as remote from '@/packages/remote'
 import { useAuthInfoStore } from '@/stores/authInfoStore'
 import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
@@ -40,6 +44,7 @@ function RouteComponent() {
   const navigate = useNavigate()
   const { session: currentSession, isFetching } = useSession(currentSessionId)
   const { providers } = useProviders()
+  const relay = useKodRelay()
   const hasLicense = useSettingsStore((s) => Boolean(s.licenseKey))
   const hasExpiredLicense = useSettingsStore((s) => s.hasExpiredLicense)
   const isLoggedIn = useAuthInfoStore((s) => Boolean(s.accessToken && s.refreshToken))
@@ -143,6 +148,7 @@ function RouteComponent() {
       if (!currentSession) {
         return
       }
+      if (currentSession.settings?.provider === relay.providerId && !(await relay.checkBalanceAndStartSync())) return
       messageListRef.current?.scrollToBottom('instant')
 
       if (currentSession.copilotId) {
@@ -157,7 +163,7 @@ function RouteComponent() {
         onUserMessageReady,
       })
     },
-    [currentSession]
+    [currentSession, relay]
   )
 
   const onClickSessionSettings = useCallback(() => {
@@ -213,6 +219,18 @@ function RouteComponent() {
           </Box>
         )}
 
+        {isLoggedIn && (
+          <Box px="md" pb="xs" className="flex justify-center">
+            <RelayStationSelector
+              apiBaseUrl={relay.apiOrigin}
+              onSelect={relay.select}
+              selectedStationId={relay.selection?.stationId}
+              selectedApiKeyId={relay.selection?.apiKeyId}
+              loading={relay.loading}
+            />
+          </Box>
+        )}
+
         {/* <ScrollButtons /> */}
         <ErrorBoundary name="session-inputbox">
           <InputBox
@@ -220,6 +238,7 @@ function RouteComponent() {
             sessionId={currentSession.id}
             sessionType={currentSession.type}
             model={model}
+            modelFilter={relay.modelFilter}
             onStartNewThread={onStartNewThread}
             onRollbackThread={onRollbackThread}
             onSelectModel={onSelectModel}
@@ -231,6 +250,13 @@ function RouteComponent() {
         </ErrorBoundary>
       </Box>
       <ThreadHistoryDrawer session={currentSession} />
+      {relay.notice === 'balance' && <BalanceInsufficientToast onClose={() => relay.setNotice(null)} />}
+      {relay.notice === 'conflict' && (
+        <RelayNoticeToast message="所选节点已被占用，请重新选择" onClose={() => relay.setNotice(null)} />
+      )}
+      {relay.notice === 'unavailable' && (
+        <RelayNoticeToast message="零售站节点尚未就绪，请重新选择节点" onClose={() => relay.setNotice(null)} />
+      )}
     </div>
   ) : (
     !isFetching && (

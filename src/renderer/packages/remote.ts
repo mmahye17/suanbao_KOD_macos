@@ -90,7 +90,7 @@ async function initAuthenticatedAfetch(): Promise<ReturnType<typeof createAuthen
   return authenticatedAfetchPromise
 }
 
-async function getAuthenticatedAfetch() {
+export async function getAuthenticatedAfetch() {
   if (!_authenticatedAfetch) {
     return await initAuthenticatedAfetch()
   }
@@ -122,6 +122,10 @@ export function getChatboxOrigin() {
   } else {
     return KOD_API_ORIGIN
   }
+}
+
+export function getKodApiOrigin() {
+  return KOD_API_ORIGIN
 }
 
 export function buildChatboxUrl(path: string) {

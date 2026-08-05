@@ -1,6 +1,7 @@
 import { ModelProviderEnum, type ProviderModelInfo } from '@shared/types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
+import { KOD_RELAY_STORAGE_KEY } from '@/packages/kodRelay'
 import { enrichModelsFromRegistry } from '@/packages/model-registry'
 import { fetchKodRelayStationModels, getKodRelayStationConfig } from '@/packages/remote'
 import { useAuthInfoStore } from '@/stores/authInfoStore'
@@ -11,10 +12,11 @@ const EMPTY_MODELS: ProviderModelInfo[] = []
 const useChatboxAIModels = () => {
   const accessToken = useAuthInfoStore((state) => state.accessToken)
   const { providerSettings: kodSettings, setProviderSettings } = useProviderSettings(ModelProviderEnum.ChatboxAI)
+  const manualRelaySelected = Boolean(localStorage.getItem(KOD_RELAY_STORAGE_KEY))
 
   const { data, ...others } = useQuery({
-    queryKey: ['kod-ai-models', accessToken],
-    enabled: Boolean(accessToken),
+    queryKey: ['kod-ai-models', accessToken, manualRelaySelected],
+    enabled: Boolean(accessToken) && !manualRelaySelected,
     queryFn: async () => {
       if (!accessToken) {
         return { models: EMPTY_MODELS }
@@ -40,7 +42,7 @@ const useChatboxAIModels = () => {
     retry: 1,
   })
 
-  const allChatboxAIModels = accessToken ? data?.models || EMPTY_MODELS : EMPTY_MODELS
+  const allChatboxAIModels = accessToken && !manualRelaySelected ? data?.models || EMPTY_MODELS : EMPTY_MODELS
 
   const chatboxAIModels = useMemo(
     () => allChatboxAIModels.filter((m) => m.type !== 'image' && !kodSettings?.excludedModels?.includes(m.modelId)),
@@ -48,10 +50,7 @@ const useChatboxAIModels = () => {
   )
 
   // 图像生成模型（type === 'image'），分拣到 image 组供 Image Creator / 图片会话使用
-  const chatboxAIImageModels = useMemo(
-    () => allChatboxAIModels.filter((m) => m.type === 'image'),
-    [allChatboxAIModels]
-  )
+  const chatboxAIImageModels = useMemo(() => allChatboxAIModels.filter((m) => m.type === 'image'), [allChatboxAIModels])
 
   return {
     allChatboxAIModels,

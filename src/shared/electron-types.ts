@@ -1,3 +1,4 @@
+import type { TinpayRendererApi } from './tinpay'
 import type { SuanbaoHostBridgeApi } from './types/suanbao'
 
 export interface ElectronIPC {
@@ -11,6 +12,7 @@ export interface ElectronIPC {
   addMcpStdioTransportEventListener: (transportId: string, event: string, callback?: (...args: any[]) => void) => void
   onNavigate: (callback: (path: string) => void) => () => void
   suanbao?: SuanbaoHostBridgeApi
+  tinpay: TinpayRendererApi
 
   // Auto-updater events
   onUpdaterChecking: (callback: () => void) => () => void

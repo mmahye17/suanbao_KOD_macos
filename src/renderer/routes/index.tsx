@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import { JK_PAGE_NAMES } from '@/analytics/jk-events'
+import { BalanceInsufficientToast } from '@/components/BalanceInsufficientToast'
 import { ChatboxWelcomeCard } from '@/components/common/ChatboxWelcomeCard'
 import { MessageLayoutSelector } from '@/components/common/MessageLayoutPreview'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
@@ -17,7 +18,10 @@ import { ImageInStorage } from '@/components/Image'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/layout/Page'
+import { RelayNoticeToast } from '@/components/RelayNoticeToast'
+import { RelayStationSelector } from '@/components/RelayStationSelector'
 import { useMyCopilots, useRemoteCopilotsByCursor } from '@/hooks/useCopilots'
+import { useKodRelay } from '@/hooks/useKodRelay'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { navigateToSettings } from '@/modals/Settings'
@@ -63,6 +67,7 @@ function Index() {
   })
 
   const { providers } = useProviders()
+  const relay = useKodRelay()
   const hasLicense = useSettingsStore((s) => Boolean(s.licenseKey))
   const hasExpiredLicense = useSettingsStore((s) => s.hasExpiredLicense)
   const isLoggedIn = useAuthInfoStore((s) => Boolean(s.accessToken && s.refreshToken))
@@ -150,6 +155,8 @@ function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
+      if (session.settings?.provider === relay.providerId && !(await relay.checkBalanceAndStartSync())) return
+
       const newSession = await createSessionStore({
         name: session.name,
         type: 'chat',
@@ -198,6 +205,7 @@ function Index() {
       sessionWebBrowsingMap,
       setSessionWebBrowsing,
       clearSessionWebBrowsing,
+      relay,
     ]
   )
 
@@ -337,10 +345,23 @@ function Index() {
             )
           )}
 
+          {isLoggedIn && (
+            <Box px="md" className={clsx('flex justify-center', widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto')}>
+              <RelayStationSelector
+                apiBaseUrl={relay.apiOrigin}
+                onSelect={relay.select}
+                selectedStationId={relay.selection?.stationId}
+                selectedApiKeyId={relay.selection?.apiKeyId}
+                loading={relay.loading}
+              />
+            </Box>
+          )}
+
           <InputBox
             sessionType="chat"
             sessionId="new"
             model={selectedModel}
+            modelFilter={relay.modelFilter}
             // fullWidth
             onSelectModel={onSelectModel}
             onClickSessionSettings={onClickSessionSettings}
@@ -348,6 +369,13 @@ function Index() {
           />
         </Stack>
       </div>
+      {relay.notice === 'balance' && <BalanceInsufficientToast onClose={() => relay.setNotice(null)} />}
+      {relay.notice === 'conflict' && (
+        <RelayNoticeToast message="所选节点已被占用，请重新选择" onClose={() => relay.setNotice(null)} />
+      )}
+      {relay.notice === 'unavailable' && (
+        <RelayNoticeToast message="零售站节点尚未就绪，请重新选择节点" onClose={() => relay.setNotice(null)} />
+      )}
     </Page>
   )
 }
