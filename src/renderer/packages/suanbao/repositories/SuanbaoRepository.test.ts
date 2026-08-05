@@ -80,3 +80,28 @@ repositoryContract(
   'IndexedDBSuanbaoRepository',
   () => new IndexedDBSuanbaoRepository(`test_${crypto.randomUUID().replaceAll('-', '_')}`)
 )
+
+// 第 5 周验证（arch §10.4）：不同 accountKey → 不同 IndexedDB 库，数据互不可见。
+describe('IndexedDBSuanbaoRepository account isolation', () => {
+  it('different accountKey → different DB (data not shared)', async () => {
+    const keyA = `iso_a_${crypto.randomUUID().replaceAll('-', '_')}`
+    const keyB = `iso_b_${crypto.randomUUID().replaceAll('-', '_')}`
+    const repoA = new IndexedDBSuanbaoRepository(keyA)
+    const repoB = new IndexedDBSuanbaoRepository(keyB)
+    await repoA.initialize()
+    await repoB.initialize()
+
+    await repoA.saveTodo(todo('a_todo'))
+    // A 看得到，B 看不到
+    expect(await repoA.listTodos()).toHaveLength(1)
+    expect(await repoB.listTodos()).toHaveLength(0)
+
+    await repoB.saveTodo(todo('b_todo'))
+    // 各自独立
+    expect((await repoA.listTodos()).map((t) => t.id)).toEqual(['a_todo'])
+    expect((await repoB.listTodos()).map((t) => t.id)).toEqual(['b_todo'])
+
+    await repoA.deleteDatabase()
+    await repoB.deleteDatabase()
+  })
+})
