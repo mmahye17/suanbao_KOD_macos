@@ -105,7 +105,18 @@ export class SuanbaoWindowManager {
   }
 
   hide(): void {
-    this.petWindow?.hide()
+    const window = this.petWindow
+    if (!window || window.isDestroyed()) return
+    // On Windows, a transparent frameless BrowserWindow can lose its rendered
+    // surface after hide() followed by showInactive(). Recreate it next time
+    // instead of leaving a visible but empty desktop widget.
+    window.hide()
+    this.petWindow = null
+    // Destroy on the next event-loop turn so an IPC invoke from this window
+    // can resolve before its WebContents exits.
+    setTimeout(() => {
+      if (!window.isDestroyed()) window.destroy()
+    }, 0)
   }
 
   minimize(): void {
@@ -122,10 +133,11 @@ export class SuanbaoWindowManager {
     }
     const window = await this.ensureWindow()
     if (!this.enabled || !this.shouldShowFloating()) {
-      window.hide()
+      this.hide()
       return
     }
     this.restorePlacement()
+    if (process.platform === 'win32') window.setIgnoreMouseEvents(false)
     if (!window.isVisible()) window.showInactive()
   }
 
@@ -154,7 +166,16 @@ export class SuanbaoWindowManager {
   }
 
   setInteractive(interactive: boolean): void {
-    this.petWindow?.setIgnoreMouseEvents(!interactive, { forward: true })
+    const window = this.petWindow
+    if (!window || window.isDestroyed()) return
+    if (process.platform === 'win32') {
+      // Windows does not reliably forward pointer-enter events after a
+      // transparent window becomes click-through. Keep this compact window
+      // interactive so the mascot and its action buttons stay reachable.
+      window.setIgnoreMouseEvents(false)
+      return
+    }
+    window.setIgnoreMouseEvents(!interactive, { forward: true })
   }
 
   updatePlacement(nextPlacement: SuanbaoPlacement): SuanbaoPlacement {
@@ -228,7 +249,9 @@ export class SuanbaoWindowManager {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true,
+        // electron-vite emits a shared preload chunk. Sandboxed preload
+        // scripts cannot require it, which leaves window.suanbaoAPI missing.
+        sandbox: false,
         webSecurity: true,
         preload: this.options.preloadPath,
       },
@@ -243,6 +266,9 @@ export class SuanbaoWindowManager {
     window.webContents.on('will-attach-webview', (event) => event.preventDefault())
     window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
       log.error('[Suanbao] Pet renderer failed to load.', { errorCode, errorDescription, validatedURL })
+    })
+    window.webContents.on('preload-error', (_event, preloadPath, error) => {
+      log.error('[Suanbao] Pet preload failed.', { preloadPath, error })
     })
     window.webContents.on('render-process-gone', (_event, details) => {
       log.error('[Suanbao] Pet renderer process exited.', details)

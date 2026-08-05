@@ -1,6 +1,7 @@
 import type { SuanbaoBootstrap, SuanbaoPlacement, SuanbaoViewModel } from '@shared/types/suanbao'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { SuanbaoMascot } from '@/components/suanbao/SuanbaoMascot'
 import { defaultSuanbaoWindowCopy, getSuanbaoWindowCopy } from './copy'
 
 const DRAG_THRESHOLD_PX = 4
@@ -110,11 +111,10 @@ export function SuanbaoWindowApp() {
     void window.suanbaoAPI.dispatchCommand({ type: nextOpen ? 'open-bubble' : 'close-bubble' }).catch(() => undefined)
   }
 
-  const isAnimationOff = bootstrap?.animation === 'off'
   const copy = getSuanbaoWindowCopy(bootstrap?.language ?? 'zh-Hans')
   return (
     <main
-      className={`suanbao-window ${isAnimationOff ? 'animation-off' : ''}`}
+      className={`suanbao-window animation-${bootstrap?.animation ?? 'full'}`}
       onPointerEnter={() => void window.suanbaoAPI.setInteractiveRegion({ interactive: true })}
       onPointerLeave={() => {
         if (!bubbleOpen && !dragRef.current) void window.suanbaoAPI.setInteractiveRegion({ interactive: false })
@@ -206,12 +206,7 @@ export function SuanbaoWindowApp() {
           dragRef.current = null
         }}
       >
-        <span className="suanbao-sprout" aria-hidden="true" />
-        <span className="suanbao-body" aria-hidden="true">
-          <span className="suanbao-eye left" />
-          <span className="suanbao-eye right" />
-          <span className="suanbao-mouth" />
-        </span>
+        <SuanbaoMascot state={viewModel.petState} />
       </button>
 
       <span className={`suanbao-status connection-${viewModel.connection}`}>

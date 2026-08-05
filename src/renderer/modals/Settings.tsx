@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Text, Title } from '@mantine/core'
-import { IconX } from '@tabler/icons-react'
+import { IconMinus, IconX } from '@tabler/icons-react'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -9,7 +9,7 @@ import {
   useLocation,
 } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { type FC, useCallback, useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
 import { z } from 'zod'
@@ -18,6 +18,7 @@ import SettingsKnowledgeBaseRouteComponent from '@/components/knowledge-base/Kno
 import { Modal } from '@/components/layout/Overlay'
 import { getThemeDesign } from '@/hooks/useAppTheme'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
+import platform from '@/platform'
 import { router } from '@/router'
 import { RouteComponent as SettingsChatRouteComponent } from '@/routes/settings/chat'
 import { RouteComponent as SettingsChatboxAiRouteComponent } from '@/routes/settings/chatbox-ai'
@@ -36,13 +37,11 @@ import { RouteComponent as SettingsSkillsRouteComponent } from '@/routes/setting
 import { RouteComponent as SettingsSuanbaoRouteComponent } from '@/routes/settings/suanbao'
 import { RouteComponent as SettingsWebSearchRouteComponent } from '@/routes/settings/web-search'
 
-export type SettingsModalProps = {}
-
-export const SettingsModal: FC<SettingsModalProps> = (props) => {
+export const SettingsModal = () => {
   const { t } = useTranslation()
   const location = useLocation()
   const search = location.search as { settings?: string }
-  const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
+  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
 
   useEffect(() => {
     if (search.settings) {
@@ -86,6 +85,22 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
           <Text c="chatbox-tertiary" size="xs">
             ESC
           </Text>
+          {needRoomForWindowsWindowControls && (
+            <Button
+              className="controls"
+              color="chatbox-secondary"
+              variant="light"
+              h={36}
+              w={36}
+              p={0}
+              radius={18}
+              onClick={() => platform.minimize()}
+              autoFocus={false}
+              aria-label={t('Minimize') ?? ''}
+            >
+              <ScalableIcon icon={IconMinus} size={20} />
+            </Button>
+          )}
           <Button
             className="controls"
             color="chatbox-secondary"

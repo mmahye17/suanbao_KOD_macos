@@ -10,6 +10,12 @@
   -webkit-app-region: no-drag;
 }
 
+.window-controls,
+.window-controls * {
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",

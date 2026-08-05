@@ -12,12 +12,13 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
-  filter: drop-shadow(0 10px 18px rgba(60, 46, 18, 0.2));
   will-change: transform;
 }
+
 .suanbao-root:active {
   cursor: grabbing;
 }
+
 .suanbao-name {
   font-size: 11px;
   font-weight: 700;
@@ -27,228 +28,85 @@
   border-radius: 999px;
   border: 1px solid var(--chatbox-border-primary);
 }
-.suanbao-garlic {
+
+.suanbao-mascot {
   position: relative;
+  display: block;
   width: 78px;
-  height: 88px;
+  height: 91px;
   transform-origin: 50% 100%;
+  filter: drop-shadow(0 8px 12px rgba(46, 62, 38, 0.22));
+  will-change: transform, filter;
 }
-.suanbao-bulb {
-  position: absolute;
-  left: 9px;
-  top: 27px;
-  width: 60px;
-  height: 57px;
-  border: 2px solid #d7bf84;
-  border-radius: 46% 46% 42% 42% / 36% 36% 60% 60%;
-  background: radial-gradient(circle at 38% 28%, #fffdf3 0 22%, #f6e8bb 64%, #e7cc83 100%);
-  box-shadow: inset -7px -6px 12px rgba(138, 101, 36, 0.14);
+
+.suanbao-mascot-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
-.suanbao-bulb::before,
-.suanbao-bulb::after {
-  content: "";
-  position: absolute;
-  top: 7px;
-  width: 21px;
-  height: 45px;
-  border-radius: 50%;
-  border-left: 1px solid rgba(157, 121, 58, 0.2);
+
+.suanbao-mascot-state-thinking,
+.suanbao-mascot-state-executing {
+  filter: drop-shadow(0 8px 12px rgba(46, 62, 38, 0.2)) drop-shadow(0 0 6px rgba(111, 94, 231, 0.6));
 }
-.suanbao-bulb::before {
-  left: 7px;
+
+.suanbao-mascot-state-success {
+  filter: drop-shadow(0 8px 12px rgba(46, 62, 38, 0.2)) drop-shadow(0 0 6px rgba(72, 177, 104, 0.65));
 }
-.suanbao-bulb::after {
-  right: 3px;
-  transform: scaleX(-1);
+
+.suanbao-mascot-state-error {
+  filter: drop-shadow(0 8px 12px rgba(46, 62, 38, 0.2)) drop-shadow(0 0 6px rgba(219, 83, 83, 0.65));
 }
-.suanbao-sprout {
-  position: absolute;
-  left: 26px;
-  top: 0;
-  width: 29px;
-  height: 35px;
-}
-.suanbao-sprout::before {
-  content: "";
-  position: absolute;
-  left: 13px;
-  top: 8px;
-  width: 5px;
-  height: 24px;
-  background: #78a856;
-  border-radius: 5px;
-  transform: rotate(-7deg);
-}
-.suanbao-sprout i {
-  position: absolute;
-  width: 24px;
-  height: 12px;
-  background: linear-gradient(135deg, #a7d56e, #5e9948);
-  border-radius: 100% 0 100% 0;
-}
-.suanbao-sprout i:first-child {
-  left: -3px;
-  top: 4px;
-  transform: rotate(24deg);
-}
-.suanbao-sprout i:last-child {
-  right: -5px;
-  top: 0;
-  transform: scaleX(-1) rotate(18deg);
-}
-.suanbao-eye {
-  position: absolute;
-  top: 24px;
-  width: 5px;
-  height: 8px;
-  border-radius: 50%;
-  background: #453b2a;
-}
-.suanbao-eye.left {
-  left: 18px;
-}
-.suanbao-eye.right {
-  right: 18px;
-}
-.suanbao-cheek {
-  position: absolute;
-  top: 34px;
-  width: 9px;
-  height: 5px;
-  border-radius: 50%;
-  background: #eaa18b;
-  opacity: 0.72;
-}
-.suanbao-cheek.left {
-  left: 8px;
-}
-.suanbao-cheek.right {
-  right: 8px;
-}
-.suanbao-smile {
-  position: absolute;
-  left: 26px;
-  top: 34px;
-  width: 8px;
-  height: 6px;
-  border-bottom: 2px solid #594532;
-  border-radius: 50%;
-}
-.suanbao-status-mark {
-  display: none;
-  position: absolute;
-  right: -5px;
-  top: -5px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  color: white;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 20px;
-  text-align: center;
-}
-.suanbao-state-thinking .suanbao-eye {
-  height: 2px;
-  top: 29px;
-  border-radius: 2px;
-}
-.suanbao-state-thinking .suanbao-smile {
-  border-bottom: 0;
-  border-top: 2px solid #594532;
-  top: 39px;
-}
-.suanbao-state-executing .suanbao-bulb {
-  box-shadow:
-    inset -7px -6px 12px rgba(138, 101, 36, 0.14),
-    0 0 0 4px rgba(66, 153, 225, 0.25);
-}
-.suanbao-state-executing .suanbao-sprout {
+
+.suanbao-mascot-state-executing.suanbao-mascot-animation-full {
   animation: suanbao-work 0.55s ease-in-out infinite alternate;
 }
-.suanbao-state-success .suanbao-status-mark,
-.suanbao-state-error .suanbao-status-mark {
-  display: block;
-}
-.suanbao-state-success .suanbao-status-mark {
-  background: #2f9e44;
-}
-.suanbao-state-success .suanbao-status-mark::before {
-  content: "✓";
-}
-.suanbao-state-error .suanbao-status-mark {
-  background: #e03131;
-}
-.suanbao-state-error .suanbao-status-mark::before {
-  content: "!";
-}
-.suanbao-state-error .suanbao-smile {
-  border-bottom: 0;
-  border-top: 2px solid #594532;
-  top: 39px;
-}
-.suanbao-feet {
-  position: absolute;
-  left: 23px;
-  bottom: 0;
-  display: flex;
-  gap: 17px;
-}
-.suanbao-feet i {
-  width: 14px;
-  height: 6px;
-  background: #9b7045;
-  border-radius: 50%;
-}
-.suanbao-animation-full {
+
+.suanbao-mascot-animation-full {
   animation: suanbao-float 2.6s ease-in-out infinite;
 }
-.suanbao-animation-full .suanbao-sprout {
-  animation: suanbao-wave 1.8s ease-in-out infinite;
-}
-.suanbao-animation-reduced {
+
+.suanbao-mascot-animation-reduced {
   animation: suanbao-float 5s ease-in-out infinite;
 }
-.suanbao-animation-off,
-.suanbao-animation-off .suanbao-sprout {
+
+.suanbao-mascot-animation-off {
   animation: none !important;
 }
+
 @keyframes suanbao-float {
   0%,
   100% {
     transform: translateY(0) rotate(-1deg);
   }
   50% {
-    transform: translateY(-6px) rotate(1deg);
+    transform: translateY(-5px) rotate(1deg);
   }
 }
+
 @keyframes suanbao-work {
   from {
-    transform: rotate(-10deg) scale(0.95);
+    transform: rotate(-2deg) scale(0.98);
   }
   to {
-    transform: rotate(10deg) scale(1.05);
+    transform: rotate(2deg) scale(1.02);
   }
 }
-@keyframes suanbao-wave {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(7deg);
-  }
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .suanbao-garlic,
-  .suanbao-sprout {
+  .suanbao-mascot {
     animation: none !important;
   }
 }
+
 .suanbao-menu {
   border-color: var(--chatbox-border-primary) !important;
   background: var(--chatbox-background-primary) !important;
 }
+
 .suanbao-menu-item {
   display: flex;
   align-items: center;
@@ -259,13 +117,16 @@
   color: var(--chatbox-tint-primary);
   font-size: 14px;
 }
+
 .suanbao-menu-item:hover {
   background: var(--chatbox-background-secondary);
 }
+
 .suanbao-menu-item:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
 .suanbao-danger {
   color: var(--chatbox-tint-error);
 }

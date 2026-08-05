@@ -13,6 +13,7 @@ import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
 import { useSession } from '@/stores/chatStore'
 import { useCurrentTaskId, useTaskSessionRecord } from '@/stores/taskSessionStore'
+import { SuanbaoMascot } from './SuanbaoMascot'
 import {
   cancelSuanbaoAction,
   continueRecentChat,
@@ -22,33 +23,10 @@ import {
 } from './suanbaoActions'
 import { trackSuanbaoAction } from './suanbaoAnalytics'
 import { buildSuanbaoPrompt } from './suanbaoPrompts'
-import { isSuanbaoBusyState, mapMessagesToSuanbaoState, type SuanbaoVisualState } from './suanbaoState'
+import { isSuanbaoBusyState, mapMessagesToSuanbaoState } from './suanbaoState'
 import { useSuanbaoStore } from './suanbaoStore'
 import { normalizedToPixels, pixelsToNormalized, shouldShowSuanbao } from './suanbaoUtils'
 import './suanbao.css'
-
-function GarlicVisual({ animation, state }: { animation: string; state: SuanbaoVisualState }) {
-  return (
-    <div className={`suanbao-garlic suanbao-animation-${animation} suanbao-state-${state}`} aria-hidden="true">
-      <div className="suanbao-sprout">
-        <i />
-        <i />
-      </div>
-      <div className="suanbao-bulb">
-        <span className="suanbao-eye left" />
-        <span className="suanbao-eye right" />
-        <span className="suanbao-cheek left" />
-        <span className="suanbao-cheek right" />
-        <span className="suanbao-smile" />
-        <span className="suanbao-status-mark" />
-      </div>
-      <div className="suanbao-feet">
-        <i />
-        <i />
-      </div>
-    </div>
-  )
-}
 
 const NullFallback = () => null
 
@@ -160,7 +138,7 @@ function SuanbaoPetInner() {
     if (
       locked ||
       event.button !== 0 ||
-      (event.target !== event.currentTarget && !(event.target as Element).closest('.suanbao-garlic, .suanbao-name'))
+      (event.target !== event.currentTarget && !(event.target as Element).closest('.suanbao-mascot, .suanbao-name'))
     )
       return
     dragRef.current = {
@@ -281,7 +259,7 @@ function SuanbaoPetInner() {
             if (event.key === 'Enter' || event.key === ' ') setOpened((value) => !value)
           }}
         >
-          <GarlicVisual animation={animation} state={visualState} />
+          <SuanbaoMascot animation={animation} state={visualState} />
           <span className="suanbao-name">{t('Suanbao')}</span>
         </div>
       </Popover.Target>

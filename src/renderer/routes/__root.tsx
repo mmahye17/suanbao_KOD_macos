@@ -405,6 +405,12 @@ function Root() {
       <SettingsModal />
       <SuanbaoPet />
       <SuanbaoRuntimeHost />
+      {getOS() === 'Linux' && (
+        <WindowControls
+          forceVisible
+          className="fixed right-0 top-0 z-[2147483000] bg-chatbox-background-primary shadow-sm"
+        />
+      )}
     </Box>
   )
 }

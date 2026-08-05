@@ -356,13 +356,14 @@ async function createWindow() {
   }
 
   const [state] = windowState.getState()
+  const useNativeWindowsFrame = process.platform === 'win32'
 
   mainWindow = new BrowserWindow({
     show: false,
-    // remove the default titlebar
-    titleBarStyle: 'hidden',
-    // expose window controlls in Windows/Linux
-    frame: false,
+    // Windows uses the native frame so its minimize/maximize/close controls
+    // remain available even when the renderer or preload bridge is recovering.
+    titleBarStyle: useNativeWindowsFrame ? 'default' : 'hidden',
+    frame: useNativeWindowsFrame,
     trafficLightPosition: { x: 10, y: 16 },
     width: state.width,
     height: state.height,
@@ -375,6 +376,11 @@ async function createWindow() {
       spellcheck: true,
       webSecurity: false, // 其中一个作用是解决跨域问题
       allowRunningInsecureContent: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      // electron-vite emits a shared preload chunk. Sandboxed preload scripts
+      // cannot require that local chunk, so window.electronAPI is never exposed.
+      sandbox: false,
       preload: app.isPackaged
         ? path.join(__dirname, '../preload/index.js')
         : path.join(__dirname, '../../out/preload/index.js'),
