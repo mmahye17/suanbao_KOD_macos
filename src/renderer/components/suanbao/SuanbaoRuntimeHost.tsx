@@ -10,6 +10,8 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { getLogger } from '@/lib/utils'
 import { suanbaoRuntime } from '@/packages/suanbao/runtime'
+// 副作用导入：激活 §10.5 V1 偏好一次性迁移到 Settings.suanbao（hydration 后触发，读路径不变）
+import '@/packages/suanbao/suanbaoSettingsSync'
 import platform from '@/platform'
 import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
