@@ -29,52 +29,6 @@ button {
   user-select: none;
 }
 
-.suanbao-window-controls {
-  position: absolute;
-  top: 3px;
-  right: 4px;
-  z-index: 3;
-  display: flex;
-  gap: 3px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease;
-  pointer-events: none;
-}
-
-.suanbao-window:hover .suanbao-window-controls,
-.suanbao-window:focus-within .suanbao-window-controls {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-.suanbao-window-controls button {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  place-items: center;
-  color: #4c564c;
-  border: 1px solid rgba(59, 70, 58, 0.14);
-  border-radius: 50%;
-  background: rgba(255, 255, 250, 0.92);
-  box-shadow: 0 2px 6px rgba(30, 42, 29, 0.14);
-  cursor: pointer;
-}
-
-.suanbao-window-controls button:hover,
-.suanbao-window-controls button:focus-visible {
-  color: #5848ca;
-  outline: 2px solid rgba(88, 72, 202, 0.35);
-  outline-offset: 1px;
-}
-
-.suanbao-window-controls button:last-child:hover {
-  color: #b52f2f;
-  background: #fff0f0;
-}
-
 .suanbao-window-fallback {
   display: flex;
   align-items: flex-start;

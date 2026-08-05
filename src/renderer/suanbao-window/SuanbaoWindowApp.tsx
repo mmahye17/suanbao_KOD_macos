@@ -120,33 +120,6 @@ export function SuanbaoWindowApp() {
         if (!bubbleOpen && !dragRef.current) void window.suanbaoAPI.setInteractiveRegion({ interactive: false })
       }}
     >
-      <div className="suanbao-window-controls" aria-label={copy.windowControls}>
-        <button
-          type="button"
-          aria-label={copy.minimizeSuanbao}
-          title={copy.minimize}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            void window.suanbaoAPI.minimize().catch(() => undefined)
-          }}
-        >
-          <span aria-hidden="true">−</span>
-        </button>
-        <button
-          type="button"
-          aria-label={copy.hideSuanbao}
-          title={copy.hide}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            void window.suanbaoAPI.hide().catch(() => undefined)
-          }}
-        >
-          <span aria-hidden="true">×</span>
-        </button>
-      </div>
-
       {bubbleOpen && (
         <section className="suanbao-bubble" aria-live="polite">
           {viewModel.operation?.phase === 'awaiting-confirmation' ? (
