@@ -105,3 +105,49 @@ describe('IndexedDBSuanbaoRepository account isolation', () => {
     await repoB.deleteDatabase()
   })
 })
+
+// 第 5 周验证（职责5·查询性能）：大数据量下 list/range 查询返回正确计数（索引/范围语义不退化）。
+describe('IndexedDBSuanbaoRepository query volume', () => {
+  it('returns correct counts and ranges at volume (500 records)', async () => {
+    const repository = new IndexedDBSuanbaoRepository(`vol_${crypto.randomUUID().replaceAll('-', '_')}`)
+    await repository.initialize()
+
+    // 500 reminders: triggerAt = 0..499
+    for (let i = 0; i < 500; i += 1) {
+      await repository.saveReminder({
+        id: `r_${i}`,
+        title: `提醒${i}`,
+        triggerAt: i,
+        timezone: 'UTC',
+        status: 'scheduled',
+        createdAt: i,
+        updatedAt: i,
+        revision: 1,
+      })
+    }
+    // 500 calendar events: startsAt = i*10, endsAt = i*10+5（均在 0..4995 内）
+    for (let i = 0; i < 500; i += 1) {
+      await repository.saveCalendarEvent({
+        id: `e_${i}`,
+        title: `日程${i}`,
+        startsAt: i * 10,
+        endsAt: i * 10 + 5,
+        timezone: 'UTC',
+        createdAt: i,
+        updatedAt: i,
+      })
+    }
+
+    // list 全量
+    expect(await repository.listReminders()).toHaveLength(500)
+    expect(await repository.listCalendarEvents()).toHaveLength(500)
+    // 范围查询：triggerAt <= before（before=250 → 0..250 共 251 条）
+    expect(await repository.listScheduledReminders(250)).toHaveLength(251)
+    expect(await repository.listScheduledReminders(0)).toHaveLength(1)
+    // 日程范围重叠：超大区间覆盖全部；无重叠区间返回 0
+    expect(await repository.listCalendarEvents({ from: 0, to: 1_000_000 })).toHaveLength(500)
+    expect(await repository.listCalendarEvents({ from: 100_000, to: 200_000 })).toHaveLength(0)
+
+    await repository.deleteDatabase()
+  })
+})

@@ -17,6 +17,45 @@ export function stringifyProps(props: Record<string, string | number | boolean>)
   return result
 }
 
+// arch §15.3 禁止记录的敏感字段（受控 prop 名精确匹配，防御性剔除）。
+// 用精确匹配避免误伤合法字段（如 'error_code' 不被 'code' 误删；'entry' 入口合法保留）。
+// 禁止清单：prompt/reply/message/content（正文）、code/stack（代码/错误内容）、
+// latitude/lat/longitude/lng/city（定位）、title/notes（待办/提醒/日程标题）、
+// filepath/path/meetinglink/url（文件路径/会议链接）、secret/token/password/apikey/authorization（凭据）。
+const SUANBAO_SENSITIVE_PROP_KEYS = new Set<string>([
+  'prompt',
+  'reply',
+  'message',
+  'content',
+  'code',
+  'stack',
+  'latitude',
+  'lat',
+  'longitude',
+  'lng',
+  'city',
+  'title',
+  'notes',
+  'filepath',
+  'path',
+  'meetinglink',
+  'url',
+  'secret',
+  'token',
+  'password',
+  'apikey',
+  'authorization',
+])
+
+function sanitizeSuanbaoProps(props: Record<string, string | number | boolean>): Record<string, string | number | boolean> {
+  const result: Record<string, string | number | boolean> = {}
+  for (const key of Object.keys(props)) {
+    if (SUANBAO_SENSITIVE_PROP_KEYS.has(key)) continue
+    result[key] = props[key]
+  }
+  return result
+}
+
 /**
  * 蒜宝埋点事件词汇表（arch §15.3，受控枚举）。pet 交互 UI 落地后补充 pet_show/pet_hide/
  * pet_interact/reminder_fired/reminder_dismissed 等事件；新增事件须先小组评审
@@ -34,7 +73,7 @@ export type SuanbaoEventName = (typeof SUANBAO_TRACKED_EVENTS)[number]
 export async function trackSuanbao(name: SuanbaoEventName, props: Record<string, string | number | boolean>): Promise<void> {
   const settings = await platform.getSettings()
   if (settings.allowReportingAndTracking === false) return
-  platform.trackingEvent(name, stringifyProps(props))
+  platform.trackingEvent(name, stringifyProps(sanitizeSuanbaoProps(props)))
 }
 
 /**

@@ -46,6 +46,26 @@ describe('trackSuanbao', () => {
       ok: 'true',
     })
   })
+
+  it('剔除 arch §15.3 禁止的敏感字段，保留合法标量（含 error_code）', async () => {
+    await trackSuanbao('data_cleared', {
+      cleared_at: 123,
+      action: 'pet',
+      error_code: 'E_TIMEOUT',
+      prompt: 'secret prompt',
+      message: 'secret msg',
+      lat: 1.5,
+      city: 'Shanghai',
+      title: 'todo title',
+      path: '/secret/file',
+      code: 'console.log(x)',
+    })
+    expect(mocks.trackingEvent).toHaveBeenCalledWith('data_cleared', {
+      cleared_at: '123',
+      action: 'pet',
+      error_code: 'E_TIMEOUT',
+    })
+  })
 })
 
 describe('clearSuanbaoData', () => {
