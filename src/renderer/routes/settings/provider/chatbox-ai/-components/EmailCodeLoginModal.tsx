@@ -2,7 +2,7 @@ import { Alert, Anchor, Button, Checkbox, Flex, PasswordInput, Stack, Text, Text
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/components/layout/Overlay'
-import { loginWithKod } from '@/packages/remote'
+import { loginWithKod, sendKodEmailCode } from '@/packages/remote'
 import type { AuthTokens } from './types'
 
 interface EmailCodeLoginModalProps {
@@ -25,6 +25,9 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
   const [password, setPassword] = useState('')
   const [invitationCode, setInvitationCode] = useState('')
   const [isFirstLogin, setIsFirstLogin] = useState(true)
+  const [emailCode, setEmailCode] = useState('')
+  const [codeSending, setCodeSending] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -32,11 +35,30 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
     setEmail('')
     setPassword('')
     setInvitationCode('')
+    setEmailCode('')
     setIsFirstLogin(true)
+    setCodeSent(false)
     setError('')
     setIsSubmitting(false)
     onClose()
   }, [onClose])
+
+  const handleSendCode = useCallback(async () => {
+    if (!email.trim()) {
+      setError(t('Please enter your email address') || 'Please enter your email address')
+      return
+    }
+    setCodeSending(true)
+    setError('')
+    try {
+      await sendKodEmailCode(email.trim())
+      setCodeSent(true)
+    } catch (error) {
+      setError(getErrorMessage(error, t('Failed to send verification code') || '发送验证码失败'))
+    } finally {
+      setCodeSending(false)
+    }
+  }, [email, t])
 
   const handleSubmit = useCallback(async () => {
     if (isSubmitting) return
@@ -53,6 +75,10 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
       setError(t('Invitation code is required for first login') || 'Invitation code is required for first login')
       return
     }
+    if (isFirstLogin && !emailCode.trim()) {
+      setError(t('Please enter verification code') || '请输入邮箱验证码')
+      return
+    }
 
     setError('')
     setIsSubmitting(true)
@@ -61,6 +87,7 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
         email: email.trim(),
         password,
         inviteCode: isFirstLogin ? invitationCode.trim() : undefined,
+        emailCode: isFirstLogin ? emailCode.trim() : undefined,
       })
       await onLoginSuccess({ ...tokens, email: email.trim() })
       handleClose()
@@ -69,7 +96,7 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
     } finally {
       setIsSubmitting(false)
     }
-  }, [email, handleClose, invitationCode, isFirstLogin, isSubmitting, onLoginSuccess, password, t])
+  }, [email, emailCode, handleClose, invitationCode, isFirstLogin, isSubmitting, onLoginSuccess, password, t])
 
   return (
     <Modal
@@ -141,6 +168,39 @@ export function EmailCodeLoginModal({ opened, onClose, onLoginSuccess }: EmailCo
             {t('Invitation code is required for first login')}
           </Text>
         </Stack>
+
+        {isFirstLogin && (
+          <Stack gap="xs">
+            <Flex align="flex-end" gap="sm">
+              <Stack gap={4} style={{ flex: 1 }}>
+                <Text size="sm" fw={500}>
+                  {t('Verification code')}
+                </Text>
+                <TextInput
+                  placeholder="123456"
+                  value={emailCode}
+                  onChange={(event) => setEmailCode(event.currentTarget.value)}
+                  maxLength={6}
+                  disabled={isSubmitting}
+                />
+              </Stack>
+              <Button
+                size="sm"
+                variant="light"
+                onClick={() => void handleSendCode()}
+                loading={codeSending}
+                disabled={isSubmitting || codeSending || !email.trim()}
+              >
+                {codeSent ? t('Resend') : t('Send code')}
+              </Button>
+            </Flex>
+            {codeSent && (
+              <Text size="xs" c="chatbox-tertiary">
+                {t('Verification code sent, valid for 5 minutes')}
+              </Text>
+            )}
+          </Stack>
+        )}
 
         <Text size="xs" c="chatbox-tertiary">
           {t('By continuing, you agree to our')}{' '}

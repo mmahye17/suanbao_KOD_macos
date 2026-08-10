@@ -162,7 +162,12 @@ function unwrapKodResult<T>(result: { code: number; message?: string; data?: T |
   return result.data
 }
 
-export async function loginWithKod(params: { email: string; password: string; inviteCode?: string }) {
+export async function loginWithKod(params: {
+  email: string
+  password: string
+  inviteCode?: string
+  emailCode?: string
+}) {
   const json = await ofetch(`${KOD_API_ORIGIN}/api/auth/login`, {
     method: 'POST',
     headers: {
@@ -172,6 +177,7 @@ export async function loginWithKod(params: { email: string; password: string; in
       email: params.email,
       password: params.password,
       ...(params.inviteCode ? { inviteCode: params.inviteCode } : {}),
+      ...(params.emailCode ? { emailCode: params.emailCode } : {}),
     },
     ignoreResponseError: true,
   })
@@ -189,6 +195,22 @@ export async function loginWithKod(params: { email: string; password: string; in
     accessToken: data.token,
     refreshToken: data.token,
     newUser: data.newUser,
+  }
+}
+
+/**
+ * 发送邮箱验证码。
+ */
+export async function sendKodEmailCode(email: string) {
+  const json = await ofetch(`${KOD_API_ORIGIN}/api/auth/send-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: { email },
+    ignoreResponseError: true,
+  })
+  // send-code 返回 data=null，code=0 即成功
+  if (json.code !== 0) {
+    throw new Error(json.message || '发送验证码失败')
   }
 }
 
