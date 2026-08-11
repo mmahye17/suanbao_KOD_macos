@@ -84,6 +84,9 @@ function Index() {
       }
     }
   }, [session.settings?.provider, session.settings?.modelId])
+  const effectiveSelectedModel = relay.selection?.modelId
+    ? { provider: relay.providerId, modelId: relay.selection.modelId }
+    : selectedModel
 
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilotsByCursor({ limit: 10 })
@@ -155,7 +158,7 @@ function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
-      if (session.settings?.provider === relay.providerId && !(await relay.checkBalanceAndStartSync())) return
+      if (relay.selection && !(await relay.checkBalanceAndStartSync())) return
 
       const newSession = await createSessionStore({
         name: session.name,
@@ -209,16 +212,20 @@ function Index() {
     ]
   )
 
-  const onSelectModel = useCallback((p: string, m: string) => {
-    setSession((old) => ({
-      ...old,
-      settings: {
-        ...(old.settings || {}),
-        provider: p,
-        modelId: m,
-      },
-    }))
-  }, [])
+  const onSelectModel = useCallback(
+    (p: string, m: string) => {
+      if (p === relay.providerId && relay.selectModel(m)) return
+      setSession((old) => ({
+        ...old,
+        settings: {
+          ...(old.settings || {}),
+          provider: p,
+          modelId: m,
+        },
+      }))
+    },
+    [relay.providerId, relay.selectModel]
+  )
 
   const onClickSessionSettings = useCallback(async () => {
     const res: Session = await NiceModal.show('session-settings', {
@@ -349,7 +356,13 @@ function Index() {
             <Box px="md" className={clsx('flex justify-center', widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto')}>
               <RelayStationSelector
                 apiBaseUrl={relay.apiOrigin}
-                onSelect={relay.select}
+                onSelect={(selection) =>
+                  relay.select(
+                    selection && effectiveSelectedModel?.modelId
+                      ? { ...selection, modelId: effectiveSelectedModel.modelId }
+                      : selection
+                  )
+                }
                 selectedStationId={relay.selection?.stationId}
                 selectedApiKeyId={relay.selection?.apiKeyId}
                 loading={relay.loading}
@@ -360,7 +373,7 @@ function Index() {
           <InputBox
             sessionType="chat"
             sessionId="new"
-            model={selectedModel}
+            model={effectiveSelectedModel}
             modelFilter={relay.modelFilter}
             // fullWidth
             onSelectModel={onSelectModel}

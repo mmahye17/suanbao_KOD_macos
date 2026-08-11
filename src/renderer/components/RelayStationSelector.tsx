@@ -47,6 +47,7 @@ export function RelayStationSelector({
   const [loadingStations, setLoadingStations] = useState(false)
   const [loadingKeys, setLoadingKeys] = useState(false)
   const keysRequest = useRef(0)
+  const wasSelecting = useRef(false)
 
   useEffect(() => {
     setPendingStationId(selectedStationId || null)
@@ -55,6 +56,14 @@ export function RelayStationSelector({
   useEffect(() => {
     setPendingKeyId(selectedApiKeyId || null)
   }, [selectedApiKeyId])
+
+  useEffect(() => {
+    if (wasSelecting.current && !loading) {
+      setPendingStationId(selectedStationId || null)
+      setPendingKeyId(selectedApiKeyId || null)
+    }
+    wasSelecting.current = loading
+  }, [loading, selectedApiKeyId, selectedStationId])
 
   useEffect(() => {
     const controller = new AbortController()

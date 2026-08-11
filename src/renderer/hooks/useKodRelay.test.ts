@@ -56,7 +56,41 @@ describe('shared Kod relay store', () => {
 
     expect(releaseKodRelayKey).toHaveBeenCalledTimes(1)
     expect(releaseKodRelayKey.mock.invocationCallOrder[0]).toBeLessThan(selectKodRelayKey.mock.invocationCallOrder[1])
-    expect(module.kodRelayStore.getState().selection).toEqual(second)
+    expect(module.kodRelayStore.getState().selection).toEqual({ ...second, modelId: 'relay-model' })
+  })
+
+  it('restores the previous key when a switch fails', async () => {
+    fetchKodRelayModels.mockResolvedValueOnce([{ modelId: 'first-model' }]).mockRejectedValueOnce(new Error('down'))
+    const module = await import('./useKodRelay')
+
+    await module.selectKodRelay(first)
+    await module.selectKodRelay(second)
+
+    expect(module.kodRelayStore.getState().selection).toEqual({ ...first, modelId: 'first-model' })
+    expect(selectKodRelayKey).toHaveBeenLastCalledWith(
+      'https://kod.example',
+      'token',
+      expect.objectContaining({ stationId: first.stationId, apiKeyId: first.apiKeyId })
+    )
+  })
+
+  it('globally falls back and recommends compatible models when the active model lacks a capability', async () => {
+    fetchKodRelayModels
+      .mockResolvedValueOnce([{ modelId: 'vision-first', capabilities: ['vision'] }])
+      .mockResolvedValueOnce([{ modelId: 'plain-second' }, { modelId: 'vision-second', capabilities: ['vision'] }])
+    const module = await import('./useKodRelay')
+
+    await module.selectKodRelay(first)
+    await module.selectKodRelay(second)
+    await module.ensureKodRelayRequirement({ capability: 'vision', label: '图片理解' })
+
+    expect(module.kodRelayStore.getState()).toMatchObject({
+      selection: { ...first, modelId: 'vision-first' },
+      recommendation: {
+        target: { selection: { ...second, modelId: 'plain-second' } },
+        models: [{ modelId: 'vision-second', capabilities: ['vision'] }],
+      },
+    })
   })
 
   it('compensates with release when models fail after selection', async () => {

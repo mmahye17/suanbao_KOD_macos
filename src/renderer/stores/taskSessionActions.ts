@@ -1,6 +1,6 @@
 import * as defaults from '@shared/defaults'
 import type { ChatStreamOptions, ModelStreamPart } from '@shared/models/types'
-import { ModelProviderEnum, createMessage, type Message, type TaskSession } from '@shared/types'
+import { createMessage, type Message, ModelProviderEnum, type TaskSession } from '@shared/types'
 import { getMessageText, sequenceMessages } from '@shared/utils/message'
 import type { ToolSet } from 'ai'
 import { createModel, createModelDependencies } from '@/adapters'
@@ -157,7 +157,10 @@ async function generateTaskResponse(taskId: string, targetMsg: Message, contextM
       modelId,
     }
     const dependencies = await createModelDependencies()
-    const model = await createModel(sessionSettings, dependencies)
+    const model = await createModel(sessionSettings, dependencies, {
+      capability: 'tool_use',
+      label: '任务工具调用',
+    })
     if (session?.workingDirectory && platform.sandboxInit) {
       const initResult = await platform.sandboxInit({ workingDirectory: session.workingDirectory })
       if (!initResult.success) {

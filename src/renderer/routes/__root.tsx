@@ -48,6 +48,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
 import { trackJkViewEvent } from '@/analytics/jk'
 import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
+import { RelayCapabilityRecommendation } from '@/components/RelayCapabilityRecommendation'
 import SuanbaoPet from '@/components/suanbao/SuanbaoPet'
 import { SuanbaoRuntimeHost } from '@/components/suanbao/SuanbaoRuntimeHost'
 import SettingsModal, { navigateToSettings } from '@/modals/Settings'
@@ -403,6 +404,7 @@ function Root() {
       {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
       <SettingsModal />
+      <RelayCapabilityRecommendation />
       <SuanbaoPet />
       <SuanbaoRuntimeHost />
       {getOS() === 'Linux' && (

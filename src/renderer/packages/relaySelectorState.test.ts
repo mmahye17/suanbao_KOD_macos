@@ -6,7 +6,7 @@ const keys = [{ id: 8, station_id: 2, api_key: 'sk-node', status: 0 }]
 
 describe('relay selector state', () => {
   it('keeps a newly selected station pending before a key is selected', () => {
-    expect(getRelayStationChange('2', stations)).toEqual({ stationId: 2, shouldClearRelay: true })
+    expect(getRelayStationChange('2', stations)).toEqual({ stationId: 2, shouldClearRelay: false })
   })
 
   it('builds a relay selection only after the pending station and key both exist', () => {

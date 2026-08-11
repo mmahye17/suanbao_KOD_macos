@@ -8,7 +8,7 @@ export function getRelayStationChange(
   const stationId = Number(value)
   return {
     stationId: stations.some((station) => station.id === stationId) ? stationId : null,
-    shouldClearRelay: true,
+    shouldClearRelay: false,
   }
 }
 

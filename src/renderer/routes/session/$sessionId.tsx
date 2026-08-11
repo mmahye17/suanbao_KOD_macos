@@ -98,6 +98,7 @@ function RouteComponent() {
 
   const onSelectModel = useCallback(
     (provider: ModelProvider, modelId: string) => {
+      if (provider === relay.providerId && relay.selectModel(modelId)) return
       if (!currentSession) {
         return
       }
@@ -109,7 +110,7 @@ function RouteComponent() {
         },
       })
     },
-    [currentSession]
+    [currentSession, relay.providerId, relay.selectModel]
   )
 
   const onStartNewThread = useCallback(() => {
@@ -148,7 +149,7 @@ function RouteComponent() {
       if (!currentSession) {
         return
       }
-      if (currentSession.settings?.provider === relay.providerId && !(await relay.checkBalanceAndStartSync())) return
+      if (relay.selection && !(await relay.checkBalanceAndStartSync())) return
       messageListRef.current?.scrollToBottom('instant')
 
       if (currentSession.copilotId) {
@@ -196,6 +197,9 @@ function RouteComponent() {
       modelId: currentSession.settings.modelId,
     }
   }, [currentSession?.settings?.provider, currentSession?.settings?.modelId])
+  const effectiveModel = relay.selection?.modelId
+    ? { provider: relay.providerId, modelId: relay.selection.modelId }
+    : model
 
   return currentSession ? (
     <div className="flex flex-col h-full">
@@ -223,7 +227,11 @@ function RouteComponent() {
           <Box px="md" pb="xs" className="flex justify-center">
             <RelayStationSelector
               apiBaseUrl={relay.apiOrigin}
-              onSelect={relay.select}
+              onSelect={(selection) =>
+                relay.select(
+                  selection && effectiveModel?.modelId ? { ...selection, modelId: effectiveModel.modelId } : selection
+                )
+              }
               selectedStationId={relay.selection?.stationId}
               selectedApiKeyId={relay.selection?.apiKeyId}
               loading={relay.loading}
@@ -237,7 +245,7 @@ function RouteComponent() {
             key={`input-box${currentSession.id}`}
             sessionId={currentSession.id}
             sessionType={currentSession.type}
-            model={model}
+            model={effectiveModel}
             modelFilter={relay.modelFilter}
             onStartNewThread={onStartNewThread}
             onRollbackThread={onRollbackThread}

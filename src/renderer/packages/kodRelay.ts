@@ -1,7 +1,9 @@
+import { enrichModelFromAnyRegistry } from '@shared/model-registry/enrich'
 import { ModelProviderType, type ProviderBaseInfo, type ProviderModelInfo, type Settings } from '@shared/types'
 
 export const KOD_RELAY_PROVIDER_ID = '__kod_relay_station__'
 export const KOD_RELAY_STORAGE_KEY = 'kod_relay'
+export const KOD_RELAY_FALLBACK_STORAGE_KEY = 'kod_relay_fallback'
 export const KOD_STATIONS_STORAGE_KEY = 'kod_stations'
 
 export interface KodRelayStation {
@@ -23,6 +25,18 @@ export interface KodRelaySelection {
   stationUrl: string
   apiKeyId: number
   apiKey: string
+  modelId?: string
+}
+
+export interface KodRelaySnapshot {
+  selection: KodRelaySelection
+  models: ProviderModelInfo[]
+}
+
+export interface KodRelayModelRequirement {
+  capability?: NonNullable<ProviderModelInfo['capabilities']>[number]
+  type?: NonNullable<ProviderModelInfo['type']>
+  label: string
 }
 
 export interface KodRelayBalance {
@@ -131,20 +145,30 @@ export async function fetchKodRelayModels(selection: KodRelaySelection, signal?:
   const result = (await response.json()) as { data?: Array<{ id?: unknown; name?: unknown }> }
   return (result.data || []).flatMap<ProviderModelInfo>((item) => {
     if (typeof item.id !== 'string') return []
-    return [{ modelId: item.id, nickname: typeof item.name === 'string' ? item.name : item.id, type: 'chat' }]
+    return [
+      enrichModelFromAnyRegistry({
+        modelId: item.id,
+        nickname: typeof item.name === 'string' ? item.name : item.id,
+        type: 'chat' as const,
+      }),
+    ]
   })
 }
 
-export function readKodRelaySelection(storage: Pick<Storage, 'getItem'>): KodRelaySelection | null {
+export function readKodRelaySelection(
+  storage: Pick<Storage, 'getItem'>,
+  key: string = KOD_RELAY_STORAGE_KEY
+): KodRelaySelection | null {
   try {
-    const value = storage.getItem(KOD_RELAY_STORAGE_KEY)
+    const value = storage.getItem(key)
     if (!value) return null
     const parsed = JSON.parse(value) as Partial<KodRelaySelection>
     if (
       typeof parsed.stationId !== 'number' ||
       typeof parsed.stationUrl !== 'string' ||
       typeof parsed.apiKeyId !== 'number' ||
-      typeof parsed.apiKey !== 'string'
+      typeof parsed.apiKey !== 'string' ||
+      (parsed.modelId !== undefined && (typeof parsed.modelId !== 'string' || !parsed.modelId))
     ) {
       return null
     }
@@ -152,6 +176,26 @@ export function readKodRelaySelection(storage: Pick<Storage, 'getItem'>): KodRel
   } catch {
     return null
   }
+}
+
+export function isKodRelayModelCompatible(model: ProviderModelInfo, requirement?: KodRelayModelRequirement) {
+  if (!requirement) return model.type === undefined || model.type === 'chat'
+  if (requirement.type && model.type !== requirement.type) return false
+  if (requirement.capability && !model.capabilities?.includes(requirement.capability)) return false
+  return true
+}
+
+export function getCompatibleKodRelayModels(models: ProviderModelInfo[], requirement?: KodRelayModelRequirement) {
+  return models.filter((model) => isKodRelayModelCompatible(model, requirement))
+}
+
+export function pickKodRelayModel(
+  models: ProviderModelInfo[],
+  preferredModelId?: string,
+  requirement?: KodRelayModelRequirement
+): ProviderModelInfo | undefined {
+  const compatible = getCompatibleKodRelayModels(models, requirement)
+  return compatible.find((model) => model.modelId === preferredModelId) || compatible[0]
 }
 
 export function relaySelectionFromBalance(balance: KodRelayBalance): KodRelaySelection | null {
