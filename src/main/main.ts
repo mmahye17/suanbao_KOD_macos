@@ -13,6 +13,8 @@ import './legacy-database-migration'
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 
+const IS_MAS_BUILD = process.env.CHATBOX_BUILD_TARGET === 'mas'
+
 import fs from 'node:fs'
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeTheme, session, shell, Tray } from 'electron'
 import electronDebug from 'electron-debug'
@@ -21,17 +23,30 @@ import os from 'os'
 import path from 'path'
 import type { ShortcutSetting } from 'src/shared/types'
 import * as analystic from './analystic-node'
-import { AppUpdater } from './app-updater'
+// MAS: auto-update is handled by App Store, not electron-updater
+let AppUpdater: typeof import('./app-updater').AppUpdater | undefined
+if (!IS_MAS_BUILD) {
+  AppUpdater = require('./app-updater').AppUpdater
+}
 import * as autoLauncher from './autoLauncher'
 import { findKodDeepLink, handleDeepLink } from './deeplinks'
 import { parseFile } from './file-parser'
 import Locale from './locales'
-import * as mcpIpc from './mcp/ipc-stdio-transport'
+// MAS: stdio-based MCP servers are incompatible with App Sandbox
+let mcpIpc: typeof import('./mcp/ipc-stdio-transport') | undefined
+if (!IS_MAS_BUILD) {
+  mcpIpc = require('./mcp/ipc-stdio-transport')
+}
 import MenuBuilder from './menu'
 import { registerOAuthHandlers } from './oauth'
 import * as proxy from './proxy'
-import { registerSandboxHandlers } from './sandbox'
-import { registerSkillsHandlers } from './skills'
+// MAS: sandbox/task execution and skills require child_process, incompatible with App Sandbox
+let registerSandboxHandlers: (() => void) | undefined
+let registerSkillsHandlers: (() => void) | undefined
+if (!IS_MAS_BUILD) {
+  registerSandboxHandlers = require('./sandbox').registerSandboxHandlers
+  registerSkillsHandlers = require('./skills').registerSkillsHandlers
+}
 import {
   delStoreBlob,
   getConfig,
@@ -604,9 +619,11 @@ if (!gotTheLock) {
       })
       await initializeSessionAttachmentRagAfterAppReady()
       ensureTray()
-      // Remove this if your app does not use auto updates
-      // eslint-disable-next-line
-      new AppUpdater(() => mainWindow)
+      // MAS: App Store handles updates natively; auto-updater is not available in sandbox
+      if (!IS_MAS_BUILD && AppUpdater) {
+        // eslint-disable-next-line
+        new AppUpdater(() => mainWindow)
+      }
 
       // 处理启动时的 Deep Link (Windows/Linux)
       // macOS 会通过 open-url 事件处理，不需要在这里处理
@@ -653,7 +670,7 @@ if (!gotTheLock) {
         } catch (e) {
           log.error('shortcut: failed to unregister', e)
         }
-        mcpIpc.closeAllTransports()
+        mcpIpc?.closeAllTransports()
         suanbaoModule?.dispose()
         suanbaoModule = null
         tinpayModule?.dispose()
@@ -746,6 +763,10 @@ ipcMain.handle('getHostname', () => {
 })
 ipcMain.handle('getDeviceName', () => {
   if (process.platform === 'darwin') {
+    // MAS: scutil is not available in App Sandbox; fall back to hostname
+    if (IS_MAS_BUILD) {
+      return os.hostname()
+    }
     try {
       const { execSync } = require('child_process')
       const computerName = execSync('scutil --get ComputerName', { encoding: 'utf8' }).trim()
@@ -940,6 +961,6 @@ ipcMain.handle('window:is-maximized', () => {
   return mainWindow?.isMaximized()
 })
 
-registerSandboxHandlers()
-registerSkillsHandlers()
+registerSandboxHandlers?.()
+registerSkillsHandlers?.()
 registerOAuthHandlers()

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { t } from 'i18next'
 import platform from '@/platform'
+import { CHATBOX_BUILD_TARGET } from '@/variables'
 
 export type UpdateStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'downloaded' | 'error'
 
@@ -42,6 +43,8 @@ let initialized = false
  */
 export function initUpdateListeners() {
   if (initialized) return
+  // MAS: App Store handles updates natively
+  if (CHATBOX_BUILD_TARGET === 'mas') return
   initialized = true
 
   if (platform.onUpdaterChecking) {

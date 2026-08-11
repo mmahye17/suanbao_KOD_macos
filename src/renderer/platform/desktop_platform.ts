@@ -12,7 +12,10 @@ import { IndexedDBSessionMetaStorage, type SessionMetaStorage } from '@/storage/
 import { IndexedDBTaskSessionStorage, type TaskSessionStorage } from '@/storage/TaskSessionStorage'
 import { rememberFileNativePath } from '@/utils/file-native-path'
 import { getOS } from '../packages/navigator'
+import { CHATBOX_BUILD_TARGET } from '@/variables'
 import type { Platform, PlatformType } from './interfaces'
+
+const IS_MAS = CHATBOX_BUILD_TARGET === 'mas'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import DesktopSessionAttachmentRagController from './session-attachment-rag/desktop-controller'
 import { DesktopSuanbaoPlatformController } from './suanbao/desktop-controller'
@@ -69,29 +72,37 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.onWindowFocused(callback)
   }
   public onUpdateDownloaded(callback: () => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdateDownloaded(callback)
   }
   public onUpdaterChecking(callback: () => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterChecking(callback)
   }
   public onUpdaterAvailable(callback: (data: { version: string }) => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterAvailable(callback)
   }
   public onUpdaterNotAvailable(callback: () => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterNotAvailable(callback)
   }
   public onUpdaterProgress(
     callback: (data: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void
   ): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterProgress(callback)
   }
   public onUpdaterDownloaded(callback: (data: { version: string }) => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterDownloaded(callback)
   }
   public onUpdaterError(callback: (data: { message: string }) => void): () => void {
+    if (IS_MAS) return () => {}
     return this.ipc.onUpdaterError(callback)
   }
   public async checkForUpdate(): Promise<{ started: boolean }> {
+    if (IS_MAS) return { started: false }
     return this.ipc.invoke('updater:check')
   }
   public onNavigate(callback: (path: string) => void): () => void {
@@ -363,51 +374,64 @@ export default class DesktopPlatform implements Platform {
     return this._sessionMetaStorage
   }
 
-  public async sandboxInit(config: { workingDirectory: string }) {
-    return this.ipc.invoke('sandbox:init', config)
+  // MAS: sandbox/task execution is incompatible with App Sandbox
+  public async sandboxInit(_config: { workingDirectory: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
+    return this.ipc.invoke('sandbox:init', _config)
   }
 
   public async sandboxExec(params: { command: string; timeout?: number }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:exec', params)
   }
 
   public async sandboxRead(params: { filePath: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:read', params)
   }
 
   public async sandboxWrite(params: { filePath: string; content: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:write', params)
   }
 
   public async sandboxEdit(params: { filePath: string; search: string; replace: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:edit', params)
   }
 
   public async sandboxLs(params: { dirPath: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:ls', params)
   }
 
   public async sandboxGrep(params: { pattern: string; dirPath?: string; include?: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:grep', params)
   }
 
   public async sandboxFind(params: { dirPath: string; pattern?: string }) {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:find', params)
   }
 
   public async sandboxKill() {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:kill')
   }
 
   public async sandboxReset() {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:reset')
   }
 
   public async sandboxStatus() {
+    if (IS_MAS) return { success: false, error: 'Sandbox not available in MAS build' }
     return this.ipc.invoke('sandbox:status')
   }
 
   public async sandboxCheckAvailability() {
+    if (IS_MAS) return { available: false, reason: 'MAS build — sandbox is disabled' }
     return this.ipc.invoke('sandbox:check-availability')
   }
 

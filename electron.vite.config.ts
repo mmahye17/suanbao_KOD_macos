@@ -123,6 +123,7 @@ export default defineConfig(({ mode }) => {
   const isWeb = process.env.CHATBOX_BUILD_PLATFORM === 'web'
   const isMobile = process.env.CHATBOX_BUILD_TARGET === 'mobile_app'
   const isDesktop = !isWeb && !isMobile
+  const isMAS = process.env.CHATBOX_BUILD_TARGET === 'mas'
 
   return {
     main: {

@@ -5,6 +5,12 @@ module.exports = async function notarizeMacos(context) {
         return
     }
 
+    // MAS builds are notarized by Apple via Transporter, not notarytool
+    if (context.targets && context.targets.some(t => t.name === 'mas')) {
+        console.log('[Notarize] Skipping — MAS uses Transporter/altool, not notarytool')
+        return
+    }
+
     if (!('APPLE_ID' in process.env && 'APPLE_ID_PASS' in process.env && 'APPLE_TEAM_ID' in process.env)) {
         console.warn('Skipping notarizing step. APPLE_ID, APPLE_ID_PASS and APPLE_TEAM_ID env variables must be set')
         return

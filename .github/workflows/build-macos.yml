@@ -57,3 +57,66 @@ jobs:
           name: Kod-macOS-${{ inputs.arch }}
           path: release/build/*.dmg
           retention-days: 30
+
+  build-mas:
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+        env:
+          npm_config_registry: https://registry.npmjs.org
+
+      - name: Install Apple Distribution Certificate
+        env:
+          APPLE_DIST_CERT_BASE64: ${{ secrets.APPLE_DIST_CERT_BASE64 }}
+          APPLE_DIST_CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+        run: |
+          if [ -n "$APPLE_DIST_CERT_BASE64" ]; then
+            echo "$APPLE_DIST_CERT_BASE64" | base64 --decode > apple_dist.p12
+            security create-keychain -p "" build.keychain
+            security import apple_dist.p12 -k build.keychain -P "$APPLE_DIST_CERT_PASSWORD" -A
+            security set-keychain-settings -t 3600 build.keychain
+            security unlock-keychain -p "" build.keychain
+            security list-keychains -d user -s build.keychain login.keychain
+          else
+            echo "APPLE_DIST_CERT_BASE64 not set — skipping certificate import"
+          fi
+
+      - name: Setup Provisioning Profile
+        env:
+          APPLE_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISION_PROFILE_BASE64 }}
+        run: |
+          if [ -n "$APPLE_PROVISION_PROFILE_BASE64" ]; then
+            mkdir -p assets
+            echo "$APPLE_PROVISION_PROFILE_BASE64" | base64 --decode > assets/embedded.mas.provisionprofile
+          else
+            echo "APPLE_PROVISION_PROFILE_BASE64 not set — skipping profile setup"
+          fi
+
+      - name: Build and package MAS
+        run: |
+          pnpm run build:mas
+          npx electron-builder build --mac --publish never --config.mas.target.target=mas
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
+
+      - name: Upload MAS Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kod-macOS-MAS
+          path: release/build/mas/*.pkg
+          retention-days: 7

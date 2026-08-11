@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { ToolSet } from 'ai'
 import Emittery from 'emittery'
 import { isEqual } from 'lodash'
+import { CHATBOX_BUILD_TARGET } from '@/variables'
 import { IPCStdioTransport } from './ipc-stdio-transport'
 import type { MCPServerConfig, MCPServerStatus } from './types'
 
@@ -11,6 +12,12 @@ type MCPClient = Awaited<ReturnType<typeof createMCPClient>>
 
 async function createClient(transportConfig: TransportConfig, name = 'chatbox-mcp-client'): Promise<MCPClient> {
   if (transportConfig.type === 'stdio') {
+    if (CHATBOX_BUILD_TARGET === 'mas') {
+      throw new Error(
+        'Local MCP servers (stdio) are not available in the Mac App Store version ' +
+          'due to macOS sandbox restrictions. Please use a remote HTTP MCP server instead.',
+      )
+    }
     const transport = await IPCStdioTransport.create(transportConfig)
     let errorMessage = ''
     try {

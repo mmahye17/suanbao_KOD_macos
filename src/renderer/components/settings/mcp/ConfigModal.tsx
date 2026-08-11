@@ -20,6 +20,7 @@ import { Modal } from '@/components/layout/Overlay'
 import { MCPServer } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
 import { trackEvent } from '@/utils/track'
+import { CHATBOX_BUILD_TARGET } from '@/variables'
 import { getConfigFromFormValues, getFormValuesFromConfig, type MCPServerConfigFormValues } from './utils'
 
 interface ConnectionTestingResult {
@@ -130,7 +131,9 @@ const ConfigForm: FC<{
         >
           <Group>
             <Radio variant="outline" size="sm" value="http" label={t('Remote (http/sse)')} />
-            <Radio variant="outline" size="sm" value="stdio" label={t('Local (stdio)')} />
+            {CHATBOX_BUILD_TARGET !== 'mas' && (
+              <Radio variant="outline" size="sm" value="stdio" label={t('Local (stdio)')} />
+            )}
           </Group>
         </Radio.Group>
         {form.values.transport.type === 'stdio' && (
