@@ -52,7 +52,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Kod-macOS-${{ inputs.arch }}
           path: release/build/*.dmg
@@ -115,7 +115,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
 
       - name: Upload MAS Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Kod-macOS-MAS
           path: release/build/mas/*.pkg
