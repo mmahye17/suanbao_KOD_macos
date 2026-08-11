@@ -1,0 +1,116 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to release channel'
+        type: boolean
+        default: false
+      notarize:
+        description: 'Notarize the app (requires Apple Developer account)'
+        type: boolean
+        default: false
+      arch:
+        description: 'Target architecture'
+        type: choice
+        options:
+          - universal (arm64 + x64)
+          - arm64
+          - x64
+        default: 'universal (arm64 + x64)'
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.12.0'
+  PNPM_VERSION: '10'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Toolchain ──────────────────────────────────────────────
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # ── Dependencies ───────────────────────────────────────────
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          npm_config_registry: https://registry.npmjs.org
+
+      # ── Type check ─────────────────────────────────────────────
+
+      - name: Type check
+        run: pnpm run check
+
+      # ── Unit tests ─────────────────────────────────────────────
+
+      - name: Run unit tests
+        run: pnpm run test
+
+      # ── Build & Package ────────────────────────────────────────
+      # electron-builder reads electron-builder.yml for mac config.
+      # The arch input overrides the yml target.arch list.
+
+      - name: Build and package (no publish)
+        if: ${{ !inputs.publish && !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          pnpm run build
+          npx electron-builder build --publish never --mac ${{ inputs.arch != 'universal (arm64 + x64)' && format('--{0}', inputs.arch) || '' }}
+        env:
+          # Notarization env vars — only used if notarize input is true
+          APPLE_ID: ${{ inputs.notarize && secrets.APPLE_ID || '' }}
+          APPLE_ID_PASS: ${{ inputs.notarize && secrets.APPLE_ID_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.notarize && secrets.APPLE_TEAM_ID || '' }}
+
+      - name: Build and package (with publish)
+        if: ${{ inputs.publish || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          pnpm run build
+          npx electron-builder build --publish always --mac ${{ inputs.arch != 'universal (arm64 + x64)' && format('--{0}', inputs.arch) || '' }}
+        env:
+          APPLE_ID: ${{ inputs.notarize && secrets.APPLE_ID || '' }}
+          APPLE_ID_PASS: ${{ inputs.notarize && secrets.APPLE_ID_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.notarize && secrets.APPLE_TEAM_ID || '' }}
+          UPDATE_CHANNEL: ${{ secrets.UPDATE_CHANNEL || 'latest' }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+
+      # ── Upload artifacts ───────────────────────────────────────
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kod-macOS-${{ inputs.arch || 'universal' }}
+          path: release/build/*.dmg
+          retention-days: 30
+
+      - name: Upload latest-mac.yml (auto-update manifest)
+        if: ${{ inputs.publish || startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kod-macOS-auto-update-manifest
+          path: release/build/latest-mac.yml
+          retention-days: 7
