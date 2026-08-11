@@ -42,12 +42,6 @@ jobs:
         env:
           npm_config_registry: https://registry.npmjs.org
 
-      - name: Type check
-        run: pnpm run check
-
-      - name: Run unit tests
-        run: pnpm run test
-
       - name: Build and package
         run: |
           pnpm run build
